@@ -41,6 +41,9 @@
   .status { min-height: 22px; margin-top: 12px; font-size: 13.5px; color: var(--dim); white-space: pre-line; }
   .status.err { color: var(--red); } .status.ok { color: var(--lime); }
   .foot { display: flex; justify-content: space-between; margin-top: 14px; }
+  .trusted { margin-top: 10px; font-size: 13px; color: var(--lime); }
+  .trusted .link { font-size: 12.5px; margin-left: 6px; }
+  a { color: var(--cyan); }
   .kbd { font: 12px ui-monospace, monospace; color: var(--cyan); border: 1px solid #00f0ff40; border-radius: 5px; padding: 0 5px; }
   .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--cyan); border-right-color: transparent; border-radius: 50%; animation: r .8s linear infinite; vertical-align: -1px; margin-right: 6px; }
   @keyframes r { to { transform: rotate(360deg); } }
@@ -98,6 +101,7 @@
     </details>
     <button id="pairBtn" class="go">Pair</button>
     <div id="pairStatus" class="status"></div>
+    <p class="sub" style="margin:18px 0 0">New here? <a href="RemoteLink.zip" download>Download the PC app (Windows)</a>, run <b>install.bat</b> on <b>your own</b> PC, set your password, then type the pairing code it shows. Everyone gets their own private connection.</p>
   </div>
 </section>
 
@@ -108,8 +112,12 @@
     <p class="sub">Connect to <b id="pcName">your PC</b></p>
     <label for="pw">Password</label>
     <input id="pw" type="password" autocomplete="off" spellcheck="false">
-    <label for="code">Authenticator code</label>
-    <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+    <div id="codeBox">
+      <label for="code">Authenticator code</label>
+      <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+      <label class="check"><input id="remember" type="checkbox" checked> Remember this Chromebook (next time only the password)</label>
+    </div>
+    <div id="trustedNote" class="trusted hidden">✔ Trusted Chromebook: only your password is needed. <button id="useCode" class="link">Use the code instead</button></div>
     <label>Mode</label>
     <div class="seg" id="modeSeg"><button data-mode="desktop" class="on">Desktop · sharp text</button><button data-mode="game">Game · smooth</button></div>
     <label class="check"><input id="viewOnly" type="checkbox"> View only (no mouse or keyboard)</label>
@@ -130,7 +138,7 @@
     <details><summary>Keyboard shortcuts during a session</summary>
       <p class="sub" style="margin:8px 0 0">Hold <span class="kbd">Ctrl+Alt+Shift</span> and press:<br>
       <span class="kbd">F</span> full screen · <span class="kbd">G</span> game/desktop · <span class="kbd">S</span> stats · <span class="kbd">H</span> pin toolbar ·
-      <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">Q</span> disconnect.<br>
+      <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">C</span> second cursor · <span class="kbd">Q</span> disconnect.<br>
       Move the mouse to the top edge for the toolbar. In full screen, hold <span class="kbd">Esc</span> to leave. The Search key acts as the Windows key.</p>
     </details>
     <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button></div>
@@ -151,6 +159,7 @@
     <button id="keysBtn" title="Special keys">Keys ▾</button>
     <button id="clipBtn" title="Clipboard">Clipboard ▾</button>
     <button id="muteBtn" title="Sound (Ctrl+Alt+Shift+M)">🔊</button>
+    <button id="curBtn" title="Also show the Chromebook's own cursor (Ctrl+Alt+Shift+C)">🖱</button>
     <button id="statsBtn" title="Stats (Ctrl+Alt+Shift+S)">Stats</button>
     <button id="fsBtn" title="Full screen (Ctrl+Alt+Shift+F)">⛶</button>
     <button id="pinBtn" title="Keep this bar open (Ctrl+Alt+Shift+H)">📌</button>
@@ -303,6 +312,17 @@
     return hmac(token, `rsess|${cn}|${hn}`);
   }
 
+  // Trusted-device login: password + a 256-bit key the PC gave this Chromebook after one code login.
+  function deviceSecret(devKey, K) {
+    return hmac(devKey, K);
+  }
+  function deviceProof(dk, cn, hn, viewOnly) {
+    return hmac(dk, `dauth|${cn}|${hn}|${viewOnly ? 1 : 0}`);
+  }
+  function deviceSessionKey(dk, cn, hn) {
+    return hmac(dk, `dsess|${cn}|${hn}`);
+  }
+
   // ---- AES-256-GCM envelope for everything after login ----------------------
   async function aesKey(raw) {
     return S.importKey('raw', bytes(raw), 'AES-GCM', false, ['encrypt', 'decrypt']);
@@ -320,7 +340,7 @@
   const api = {
     PBKDF2_ITER, TOTP_PERIOD, TOTP_DIGITS,
     rand, b64, unb64, base32Encode, base32Decode, hmac, sha256, pbkdf2, equal,
-    totpAt, totpCounter, authProof, sessionKey, resumeProof, resumeKey,
+    totpAt, totpCounter, authProof, sessionKey, resumeProof, resumeKey, deviceSecret, deviceProof, deviceSessionKey,
     aesKey, seal, open, utf8: (s) => TE.encode(s),
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -522,12 +542,23 @@
   function getPair() {
     const p = store.get(STORE);
     if (!p || !p.room) return null;
-    return { room: p.room, name: p.name || 'your PC', url: p.url || DEFAULT_SIGNAL.url, key: p.key || DEFAULT_SIGNAL.key };
+    const dev = p.dev && typeof p.dev.id === 'string' && typeof p.dev.k === 'string' ? p.dev : null;
+    return { room: p.room, name: p.name || 'your PC', url: p.url || DEFAULT_SIGNAL.url, key: p.key || DEFAULT_SIGNAL.key, dev };
   }
   function savePair(p) {
     const custom = p.url && p.key && (p.url !== DEFAULT_SIGNAL.url || p.key !== DEFAULT_SIGNAL.key);
-    store.set(STORE, { room: p.room, name: p.name, url: custom ? p.url : '', key: custom ? p.key : '' });
+    store.set(STORE, { room: p.room, name: p.name, url: custom ? p.url : '', key: custom ? p.key : '', dev: p.dev || null });
   }
+  // Trusted-device key: the PC hands it out after one login with the code; with it, the password is enough.
+  function forgetDevice() { const p = getPair(); if (p && p.dev) { p.dev = null; savePair(p); } }
+  function deviceLabel() {
+    const ua = navigator.userAgent;
+    const kind = /CrOS/.test(ua) ? 'Chromebook' : /Windows/.test(ua) ? 'Windows PC' : /Mac OS/.test(ua) ? 'Mac' : /Android/.test(ua) ? 'Android' : 'Browser';
+    const ch = (ua.match(/Chrome\/(\d+)/) || [])[1];
+    const d = new Date();
+    return `${kind}${ch ? ' (Chrome ' + ch + ')' : ''} · ${d.getDate()}/${d.getMonth() + 1}`;
+  }
+  $('useCode').onclick = () => { forgetDevice(); showLogin('This Chromebook will use the code again.'); };
   $('pairBtn').onclick = doPair;
   $('pairInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') doPair(); });
   function doPair() {
@@ -545,7 +576,7 @@
   };
 
   // ------------------------------------------------------------ login screen
-  const prefs = Object.assign({ mode: 'desktop', quality: '20000', fps: '60', codec: 'h264', audio: '1', fullRes: false, fs: true }, store.get(PREFS) || {});
+  const prefs = Object.assign({ mode: 'desktop', quality: '20000', fps: '60', codec: 'h264', audio: '1', fullRes: false, fs: true, localCursor: false }, store.get(PREFS) || {});
   function savePrefs() { store.set(PREFS, prefs); }
   function setMode(m, fromBar) {
     prefs.mode = m === 'game' ? 'game' : 'desktop'; savePrefs();
@@ -567,11 +598,14 @@
     $('fullRes').checked = !!prefs.fullRes; $('fsOnConnect').checked = prefs.fs !== false;
     setMode(prefs.mode);
     $('connectBtn').disabled = false;
+    const trusted = !!pair.dev;
+    $('codeBox').classList.toggle('hidden', trusted);
+    $('trustedNote').classList.toggle('hidden', !trusted);
     const canResume = resume && resume.droppedAt && Date.now() - resume.droppedAt < 9.5 * 60e3;
     $('resumeBtn').classList.toggle('hidden', !canResume);
     view('loginView');
     status('loginStatus', msg || '', kind);
-    ($('pw').value ? $('code') : $('pw')).focus();
+    (($('pw').value && !trusted) ? $('code') : $('pw')).focus();
   }
   for (const id of ['quality', 'fps', 'codec', 'audio']) $(id).onchange = () => { prefs[id] = $(id).value; savePrefs(); };
   $('fullRes').onchange = () => { prefs.fullRes = $('fullRes').checked; savePrefs(); };
@@ -581,7 +615,11 @@
     $('code').value = c;
     if (c.length === 6 && $('pw').value) startLogin();
   });
-  $('pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') { if ($('code').value.length === 6) startLogin(); else $('code').focus(); } });
+  $('pw').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const pr = getPair();
+    if ((pr && pr.dev) || $('code').value.length === 6) startLogin(); else $('code').focus();
+  });
   $('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') startLogin(); });
   $('connectBtn').onclick = startLogin;
   $('resumeBtn').onclick = () => {
@@ -593,12 +631,15 @@
 
   function startLogin() {
     if (link && !link.closed) return;
+    const pr = getPair();
+    const trusted = !!(pr && pr.dev);
     const pw = $('pw').value, code = $('code').value.replace(/\D/g, '');
     if (!pw) { status('loginStatus', 'Type your password.', 'err'); $('pw').focus(); return; }
-    if (code.length !== 6) { status('loginStatus', 'Type the 6-digit code from your authenticator app.', 'err'); $('code').focus(); return; }
+    if (!trusted && code.length !== 6) { status('loginStatus', 'Type the 6-digit code from your authenticator app.', 'err'); $('code').focus(); return; }
     $('pw').value = ''; $('code').value = '';
     if (prefs.fs !== false) goFullscreen(); // uses this click/keypress as the required user gesture
-    connect({ mode: 'otp', password: pw, code, viewOnly: $('viewOnly').checked });
+    if (trusted) connect({ mode: 'device', password: pw, viewOnly: $('viewOnly').checked });
+    else connect({ mode: 'otp', password: pw, code, viewOnly: $('viewOnly').checked, remember: $('remember').checked });
   }
 
   // ------------------------------------------------------------ connection
@@ -656,19 +697,33 @@
         if (!(m.iter >= 100000 && m.iter <= 3000000)) return fail(L, 'The PC sent strange login parameters. Refusing.');
         say('Checking password…');
         const K = await P.pbkdf2(o.password, P.unb64(m.salt), m.iter);
-        proof = await P.authProof(K, L.cn, L.hn, o.code, L.viewOnly);
-        raw = await P.sessionKey(K, L.cn, L.hn, o.code);
+        if (o.mode === 'device') {
+          const dk = await P.deviceSecret(P.unb64(L.pair.dev.k), K);
+          proof = await P.deviceProof(dk, L.cn, L.hn, L.viewOnly);
+          raw = await P.deviceSessionKey(dk, L.cn, L.hn);
+        } else {
+          proof = await P.authProof(K, L.cn, L.hn, o.code, L.viewOnly);
+          raw = await P.sessionKey(K, L.cn, L.hn, o.code);
+        }
         o.password = null;
       }
       L.key = await P.aesKey(raw);
-      L.rt.send({ from: 'c', t: 'auth', sid: L.sid, mode: o.mode, tid: o.mode === 'resume' ? resume.tid : undefined, proof: P.b64(proof), viewOnly: L.viewOnly });
+      L.rt.send({
+        from: 'c', t: 'auth', sid: L.sid, mode: o.mode, proof: P.b64(proof), viewOnly: L.viewOnly,
+        tid: o.mode === 'resume' ? resume.tid : undefined,
+        did: o.mode === 'device' ? L.pair.dev.id : undefined,
+        remember: o.mode === 'otp' ? !!o.remember : undefined,
+        devName: o.mode === 'otp' && o.remember ? deviceLabel() : undefined,
+      });
       say('Logging in…');
       L.timers.push(setTimeout(() => { if (!L.welcomed && !L.closed) fail(L, 'The PC stopped answering during login.'); }, 15000));
       return;
     }
     if (m.t === 'denied') {
-      if (o.mode === 'resume') { resume = null; return fail(L, 'Your session expired. Log in with a new code.'); }
-      return fail(L, `Wrong password or code. ${m.left} ${m.left === 1 ? 'try' : 'tries'} left before logins are locked.`);
+      if (o.mode === 'resume') { resume = null; return fail(L, 'Your session expired. Log in again.'); }
+      const left = `${m.left} ${m.left === 1 ? 'try' : 'tries'} left before logins are locked.`;
+      if (o.mode === 'device' && m.unknownDevice) { forgetDevice(); return fail(L, "This Chromebook isn't trusted any more (it was removed on the PC).\nEnter the authenticator code once. " + left); }
+      return fail(L, (o.mode === 'device' ? 'Wrong password. ' : 'Wrong password or code. ') + left);
     }
     if (m.t === 'sec' && L.key) {
       let msg;
@@ -692,6 +747,11 @@
       L.ice = msg.iceServers || [];
       L.name = msg.name || L.pair.name;
       resume = msg.resume ? { tid: msg.resume.tid, token: P.unb64(msg.resume.token), viewOnly: L.viewOnly, droppedAt: 0 } : null;
+      if (msg.device && msg.device.id && msg.device.key) {
+        const pr = getPair();
+        if (pr) { pr.dev = { id: String(msg.device.id), k: String(msg.device.key) }; savePair(pr); L.pair.dev = pr.dev; }
+        toast('This Chromebook is now trusted: next time only the password.', 4000);
+      }
       say('Starting the stream…');
       await sendSecure(L, { t: 'ready', prefs: currentPrefs() });
       L.timers.push(setTimeout(() => { if (!L.live && !L.closed) fail(L, "The stream didn't start. The network may be blocking video connections (set up the Cloudflare relay on the PC)."); }, 25000));
@@ -756,7 +816,7 @@
     $('voTag').classList.toggle('hidden', !L.viewOnly);
     $('barQuality').value = prefs.quality;
     setMode(prefs.mode);
-    $('surface').classList.toggle('nocursor', false);
+    applyCursor();
     view('sessionView');
     overlay(null);
     showBar(true, 2500);
@@ -889,7 +949,15 @@
   }
 
   const surface = $('surface');
-  let lastMove = '';
+  let lastMove = '', mseq = 0, lastPos = null, settleTimer = null;
+  // Every position carries a sequence number so the PC can drop late/out-of-order packets,
+  // and once the mouse rests the final position is re-sent on the reliable channel.
+  function sendPos(p) {
+    lastPos = p;
+    chan('mv', ['m', p[0], p[1], ++mseq]);
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(() => { if (lastPos && canControl()) ctl(['m', lastPos[0], lastPos[1], mseq]); }, 60);
+  }
   function onMove(e) {
     lastInput = performance.now();
     if (!canControl()) return;
@@ -903,7 +971,7 @@
     const k = p[0] + ',' + p[1];
     if (k === lastMove) return;
     lastMove = k;
-    chan('mv', ['m', p[0], p[1]]);
+    sendPos(p);
   }
   // pointerrawupdate is not frame-aligned (lower latency); pointermove is the fallback if it never fires
   let rawSeen = 0;
@@ -917,14 +985,16 @@
     if (!canControl()) return;
     if (prefs.mode === 'game' && document.pointerLockElement !== surface) { lockPointer(); return; }
     const p = document.pointerLockElement === surface ? null : normPos(e);
-    ctl(p ? ['b', e.button, 1, p[0], p[1]] : ['b', e.button, 1]);
+    if (p) lastPos = p;
+    ctl(p ? ['b', e.button, 1, p[0], p[1], ++mseq] : ['b', e.button, 1]);
     down.add('b' + e.button);
   });
   window.addEventListener('mouseup', (e) => {
     if (!down.has('b' + e.button)) return;
     down.delete('b' + e.button);
     const p = document.pointerLockElement === surface ? null : normPos(e);
-    ctl(p ? ['b', e.button, 0, p[0], p[1]] : ['b', e.button, 0]);
+    if (p) lastPos = p;
+    ctl(p ? ['b', e.button, 0, p[0], p[1], ++mseq] : ['b', e.button, 0]);
   });
   surface.addEventListener('contextmenu', (e) => e.preventDefault());
   surface.addEventListener('auxclick', (e) => e.preventDefault());
@@ -952,7 +1022,18 @@
 
   const LOCAL = { KeyF: toggleFullscreen, KeyG: () => setMode(prefs.mode === 'game' ? 'desktop' : 'game', true), KeyS: toggleStats,
     KeyH: () => { barPinned = !barPinned; showBar(barPinned); toast(barPinned ? 'Toolbar pinned' : 'Toolbar auto-hides (move mouse to the top edge)'); },
-    KeyQ: disconnect, KeyT: openType, KeyM: toggleMute };
+    KeyQ: disconnect, KeyT: openType, KeyM: toggleMute, KeyC: toggleLocalCursor };
+  // Only one cursor: by default the Chromebook's own pointer is hidden over the stream, so the one you see
+  // is the PC's real cursor — exactly where clicks land, with the right shape (text, hand, resize…).
+  function applyCursor() {
+    const hide = !prefs.localCursor && !(link && link.viewOnly);
+    surface.classList.toggle('nocursor', hide);
+    $('curBtn').style.color = prefs.localCursor ? 'var(--pink)' : '';
+  }
+  function toggleLocalCursor() {
+    prefs.localCursor = !prefs.localCursor; savePrefs(); applyCursor();
+    toast(prefs.localCursor ? "Chromebook cursor shown too (you'll see two)" : "Showing only the PC's cursor");
+  }
   window.addEventListener('keydown', (e) => {
     if (!$('sessionView').classList.contains('on')) return;
     if (typing()) { if (e.key === 'Escape') { closeType(); surface.focus(); } return; }
@@ -1016,6 +1097,7 @@
   $('fsBtn').onclick = toggleFullscreen;
   $('statsBtn').onclick = toggleStats;
   $('muteBtn').onclick = toggleMute;
+  $('curBtn').onclick = () => { toggleLocalCursor(); surface.focus(); };
   $('pinBtn').onclick = () => { barPinned = !barPinned; $('pinBtn').style.color = barPinned ? 'var(--pink)' : ''; showBar(true, 1500); };
   $('discBtn').onclick = disconnect;
   function toggleMute() { muted = !muted; $('v').muted = muted; $('muteBtn').textContent = muted ? '🔇' : '🔊'; toast(muted ? 'Sound off' : 'Sound on'); }
