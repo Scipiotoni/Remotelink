@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; media-src blob: mediastream:; connect-src https://*.supabase.co wss://*.supabase.co">
+<title>RemoteLink</title>
+<style>
+  :root { --bg:#05060b; --panel:#0c0f1a; --line:#1b2134; --text:#e9edff; --dim:#8790b3; --cyan:#00f0ff; --pink:#ff2bd6; --lime:#b6ff3b; --amber:#ffb020; --red:#ff4d6d; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  .view { position: fixed; inset: 0; display: none; }
+  .view.on { display: flex; }
+  .center { align-items: center; justify-content: center; background: radial-gradient(900px 500px at 75% -10%, #1d0b33 0%, transparent 60%), radial-gradient(700px 400px at 0% 110%, #00303a 0%, transparent 60%), var(--bg); }
+  .card { width: min(440px, 92vw); background: rgba(12,15,26,.92); border: 1px solid var(--line); border-radius: 16px; padding: 26px 26px 20px; box-shadow: 0 0 40px #00f0ff12, 0 0 1px #00f0ff; }
+  h1 { margin: 0 0 2px; font: 800 26px/1.1 system-ui; letter-spacing: 4px; }
+  h1 b { color: var(--cyan); text-shadow: 0 0 16px #00f0ff99; } h1 i { color: var(--pink); font-style: normal; text-shadow: 0 0 12px #ff2bd699; }
+  .sub { color: var(--dim); margin: 4px 0 18px; font-size: 13.5px; }
+  label { display: block; color: var(--dim); font-size: 12.5px; margin: 12px 0 5px; letter-spacing: .3px; }
+  input[type=text], input[type=password], textarea, select {
+    width: 100%; background: #04050a; color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px;
+    font: 15px ui-monospace, "Cascadia Mono", Consolas, monospace; outline: none; }
+  input:focus, textarea:focus, select:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px #00f0ff30; }
+  #code { font-size: 30px; letter-spacing: 12px; text-align: center; padding: 10px; color: var(--lime); }
+  #pairInput { letter-spacing: 1px; }
+  button { font: 650 14px system-ui; letter-spacing: .4px; color: var(--cyan); background: transparent; border: 1px solid var(--cyan); border-radius: 9px; padding: 10px 14px; cursor: pointer; }
+  button:hover { background: #00f0ff12; box-shadow: 0 0 14px #00f0ff40; }
+  button.go { width: 100%; margin-top: 16px; padding: 13px; font-size: 16px; background: linear-gradient(90deg, #ff2bd6, #a43bff); color: #fff; border: 0; box-shadow: 0 0 22px #ff2bd650; }
+  button.go:disabled { opacity: .5; cursor: wait; }
+  button.link { border: 0; padding: 4px 0; color: var(--dim); font-weight: 500; font-size: 12.5px; }
+  button.link:hover { color: var(--cyan); background: none; box-shadow: none; }
+  .row { display: flex; gap: 10px; align-items: center; } .row > * { flex: 1; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; border-radius: 0; color: var(--dim); padding: 9px; }
+  .seg button.on { background: #00f0ff1c; color: var(--cyan); box-shadow: inset 0 -2px 0 var(--cyan); }
+  .check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 14px; margin: 12px 0 0; }
+  .check input { width: 17px; height: 17px; accent-color: var(--pink); }
+  details { margin-top: 12px; } summary { color: var(--dim); cursor: pointer; font-size: 13px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  .status { min-height: 22px; margin-top: 12px; font-size: 13.5px; color: var(--dim); white-space: pre-line; }
+  .status.err { color: var(--red); } .status.ok { color: var(--lime); }
+  .foot { display: flex; justify-content: space-between; margin-top: 14px; }
+  .trusted { margin-top: 10px; font-size: 13px; color: var(--lime); }
+  .trusted .link { font-size: 12.5px; margin-left: 6px; }
+  a { color: var(--cyan); }
+  .ver { font-size: 12px; color: var(--dim); text-decoration: none; align-self: center; }
+  .ver:hover { color: var(--cyan); }
+  .kbd { font: 12px ui-monospace, monospace; color: var(--cyan); border: 1px solid #00f0ff40; border-radius: 5px; padding: 0 5px; }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--cyan); border-right-color: transparent; border-radius: 50%; animation: r .8s linear infinite; vertical-align: -1px; margin-right: 6px; }
+  @keyframes r { to { transform: rotate(360deg); } }
+
+  /* session */
+  #sessionView { background: #000; }
+  #v { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  #surface { position: absolute; inset: 0; outline: none; cursor: default; touch-action: none; }
+  #surface.nocursor { cursor: none; }
+  #bar { position: absolute; top: 0; left: 50%; transform: translate(-50%, -110%); transition: transform .18s ease; z-index: 5;
+         display: flex; gap: 6px; align-items: center; padding: 7px 8px; background: rgba(8,10,18,.9); border: 1px solid var(--line); border-top: 0;
+         border-radius: 0 0 12px 12px; box-shadow: 0 6px 24px #000a, 0 0 18px #00f0ff1c; backdrop-filter: blur(6px); white-space: nowrap; }
+  #bar.show { transform: translate(-50%, 0); }
+  #bar button, #bar select { padding: 6px 10px; font-size: 13px; border-color: #00f0ff55; width: auto; }
+  #bar select { padding: 6px 8px; font-family: system-ui; }
+  #bar .who { font: 600 13px system-ui; color: var(--text); padding: 0 6px; }
+  #bar .who small { color: var(--dim); font-weight: 500; }
+  #bar .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 8px var(--lime); margin-right: 6px; }
+  #bar .dot.relay { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  #bar .red { color: var(--red); border-color: #ff4d6d88; }
+  .tag { font: 700 11px system-ui; letter-spacing: 1px; padding: 3px 7px; border-radius: 6px; background: #ffb02022; color: var(--amber); border: 1px solid #ffb02066; }
+  #hotzone { position: absolute; top: 0; left: 25%; right: 25%; height: 6px; z-index: 4; }
+  .menu { position: absolute; top: 48px; background: rgba(8,10,18,.97); border: 1px solid var(--line); border-radius: 10px; padding: 6px; z-index: 6; min-width: 220px; box-shadow: 0 10px 30px #000c; }
+  .menu button { display: block; width: 100%; text-align: left; border: 0; color: var(--text); padding: 7px 10px; font-weight: 500; }
+  .menu button:hover { background: #00f0ff14; color: var(--cyan); }
+  .menu .fk { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 4px; }
+  .menu .fk button { text-align: center; padding: 6px 0; border: 1px solid var(--line); }
+  .menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 4px; }
+  #hud { position: absolute; left: 10px; bottom: 10px; z-index: 5; font: 12px/1.5 ui-monospace, monospace; color: var(--lime); background: rgba(0,0,0,.65);
+         border: 1px solid #b6ff3b33; border-radius: 8px; padding: 6px 9px; pointer-events: none; white-space: pre; display: none; }
+  #toast { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(8,10,18,.95); border: 1px solid var(--pink);
+           color: var(--text); padding: 9px 16px; border-radius: 10px; box-shadow: 0 0 18px #ff2bd640; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 80vw; text-align: center; }
+  #toast.show { opacity: 1; }
+  #overlay { position: absolute; inset: 0; z-index: 8; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); }
+  #overlay.on { display: flex; }
+  #overlay .box { background: rgba(10,12,22,.96); border: 1px solid var(--cyan); border-radius: 14px; padding: 18px 24px; font-size: 16px; text-align: center; box-shadow: 0 0 30px #00f0ff30; }
+  #modal { position: absolute; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.6); }
+  #modal.on { display: flex; }
+  #modal textarea { height: 160px; resize: vertical; font-size: 14px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ============ PAIR ============ -->
+<section id="pairView" class="view center">
+  <div class="card">
+    <h1><b>REMOTE</b><i>//</i>LINK</h1>
+    <p class="sub">Pair this Chromebook with your PC once. Open <b>Settings &amp; pairing</b> in the RemoteLink tray icon on the PC to see the code.</p>
+    <label for="pairInput">Pairing code (or the full pairing link)</label>
+    <input id="pairInput" type="text" autocomplete="off" spellcheck="false" placeholder="abcd-efgh-ijkl-mnop-qrst-uvwx">
+    <details><summary>Custom signaling server (only if you changed it on the PC)</summary>
+      <label for="pairUrl">Supabase URL</label><input id="pairUrl" type="text" spellcheck="false">
+      <label for="pairKey">Publishable key</label><input id="pairKey" type="text" spellcheck="false">
+    </details>
+    <button id="pairBtn" class="go">Pair</button>
+    <div id="pairStatus" class="status"></div>
+    <p class="sub" style="margin:18px 0 0">New here? <a href="RemoteLink.zip" download>Download the PC app (Windows)</a>, run <b>install.bat</b> on <b>your own</b> PC, set your password, then type the pairing code it shows. Everyone gets their own private connection. <a href="./">What is RemoteLink?</a></p>
+  </div>
+</section>
+
+<!-- ============ LOGIN ============ -->
+<section id="loginView" class="view center">
+  <div class="card">
+    <h1><b>REMOTE</b><i>//</i>LINK</h1>
+    <p class="sub">Connect to <b id="pcName">your PC</b></p>
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="off" spellcheck="false">
+    <div id="codeBox">
+      <label for="code">Authenticator code</label>
+      <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+      <label class="check"><input id="remember" type="checkbox" checked> Remember this Chromebook (next time only the password)</label>
+    </div>
+    <div id="trustedNote" class="trusted hidden">✔ Trusted Chromebook: only your password is needed. <button id="useCode" class="link">Use the code instead</button></div>
+    <label>Mode</label>
+    <div class="seg" id="modeSeg"><button data-mode="desktop" class="on">Desktop · sharp text</button><button data-mode="game">Game · smooth</button></div>
+    <label class="check"><input id="viewOnly" type="checkbox"> View only (no mouse or keyboard)</label>
+    <label class="check"><input id="fsOnConnect" type="checkbox" checked> Full screen when connected</label>
+    <details><summary>Quality &amp; advanced</summary>
+      <div class="grid2">
+        <div><label for="quality">Bandwidth</label>
+          <select id="quality"><option value="20000">Auto (up to 20 Mbps)</option><option value="35000">High (35 Mbps)</option><option value="10000">Balanced (10 Mbps)</option><option value="4000">Data saver (4 Mbps)</option></select></div>
+        <div><label for="fps">Frame rate</label><select id="fps"><option value="60">60 fps</option><option value="30">30 fps</option></select></div>
+        <div><label for="codec">Codec</label><select id="codec"><option value="h264">H.264 (fastest)</option><option value="vp9">VP9</option><option value="av1">AV1</option><option value="vp8">VP8</option></select></div>
+        <div><label for="audio">Sound</label><select id="audio"><option value="1">On</option><option value="0">Off</option></select></div>
+      </div>
+      <label class="check"><input id="fullRes" type="checkbox"> Send full PC resolution (default: match this screen, lower latency)</label>
+    </details>
+    <button id="connectBtn" class="go">Connect</button>
+    <button id="resumeBtn" class="hidden" style="width:100%;margin-top:10px">Reconnect without a new code</button>
+    <div id="loginStatus" class="status"></div>
+    <details><summary>Keyboard shortcuts during a session</summary>
+      <p class="sub" style="margin:8px 0 0">Hold <span class="kbd">Ctrl+Alt+Shift</span> and press:<br>
+      <span class="kbd">F</span> full screen · <span class="kbd">G</span> game/desktop · <span class="kbd">S</span> stats · <span class="kbd">H</span> pin toolbar ·
+      <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">C</span> second cursor · <span class="kbd">Q</span> disconnect.<br>
+      Move the mouse to the top edge for the toolbar. In full screen, hold <span class="kbd">Esc</span> to leave. The Search key acts as the Windows key.</p>
+    </details>
+    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><a class="ver" href="./" title="About RemoteLink">v1.3 · about</a></div>
+  </div>
+</section>
+
+<!-- ============ SESSION ============ -->
+<section id="sessionView" class="view">
+  <video id="v" autoplay playsinline disablepictureinpicture></video>
+  <div id="surface" tabindex="0"></div>
+  <div id="hotzone"></div>
+  <div id="bar">
+    <span class="who"><span class="dot" id="routeDot"></span><span id="barName">PC</span> <small id="barRtt"></small></span>
+    <span class="tag hidden" id="voTag">VIEW ONLY</span>
+    <div class="seg" id="barMode"><button data-mode="desktop">Desktop</button><button data-mode="game">Game</button></div>
+    <select id="barDisplay" title="Which screen"></select>
+    <select id="barQuality" title="Bandwidth"><option value="20000">Auto</option><option value="35000">High</option><option value="10000">Balanced</option><option value="4000">Saver</option></select>
+    <button id="keysBtn" title="Special keys">Keys ▾</button>
+    <button id="clipBtn" title="Clipboard">Clipboard ▾</button>
+    <button id="muteBtn" title="Sound (Ctrl+Alt+Shift+M)">🔊</button>
+    <button id="curBtn" title="Also show the Chromebook's own cursor (Ctrl+Alt+Shift+C)">🖱</button>
+    <button id="statsBtn" title="Stats (Ctrl+Alt+Shift+S)">Stats</button>
+    <button id="fsBtn" title="Full screen (Ctrl+Alt+Shift+F)">⛶</button>
+    <button id="pinBtn" title="Keep this bar open (Ctrl+Alt+Shift+H)">📌</button>
+    <button id="discBtn" class="red" title="Disconnect (Ctrl+Alt+Shift+Q)">Disconnect</button>
+  </div>
+  <div id="keysMenu" class="menu hidden">
+    <button data-combo="MetaLeft">Windows key</button>
+    <button data-combo="AltLeft+Tab">Alt + Tab</button>
+    <button data-combo="MetaLeft+Tab">Win + Tab (task view)</button>
+    <button data-combo="MetaLeft+KeyD">Win + D (show desktop)</button>
+    <button data-combo="ControlLeft+ShiftLeft+Escape">Ctrl + Shift + Esc (Task Manager)</button>
+    <button data-combo="AltLeft+F4">Alt + F4 (close window)</button>
+    <button data-combo="PrintScreen">Print Screen</button>
+    <button data-combo="Escape">Esc</button>
+    <hr>
+    <div class="fk" id="fkeys"></div>
+    <hr>
+    <button id="relKeys">Release all keys</button>
+  </div>
+  <div id="clipMenu" class="menu hidden">
+    <button id="clipToPc">Send my clipboard → PC clipboard</button>
+    <button id="clipFromPc">Copy PC clipboard → here</button>
+    <button id="typeText">Type text on the PC… (Ctrl+Alt+Shift+T)</button>
+  </div>
+  <div id="hud"></div>
+  <div id="toast"></div>
+  <div id="overlay"><div class="box" id="overlayText"></div></div>
+  <div id="modal"><div class="card">
+    <label for="typeArea">Text to type on the PC (exactly as written)</label>
+    <textarea id="typeArea" spellcheck="false"></textarea>
+    <div class="row" style="margin-top:12px"><button id="typeCancel">Cancel</button><button id="typeSend" class="go" style="margin:0">Type it  (Ctrl+Enter)</button></div>
+  </div></div>
+</section>
+
+<script>/* RemoteLink shared crypto + protocol helpers.
+ * Runs unchanged in the browser (Chromebook client) and in Node/Electron (PC host).
+ * Only uses WebCrypto (globalThis.crypto.subtle).
+ */
+(function (root) {
+  'use strict';
+  const C = globalThis.crypto;
+  const S = C.subtle;
+  const TE = new TextEncoder();
+  const TD = new TextDecoder();
+
+  const PBKDF2_ITER = 600000;
+  const TOTP_PERIOD = 30; // seconds — what every authenticator app uses
+  const TOTP_DIGITS = 6;
+
+  function bytes(x) {
+    if (x instanceof Uint8Array) return x;
+    if (typeof x === 'string') return TE.encode(x);
+    if (x instanceof ArrayBuffer) return new Uint8Array(x);
+    throw new Error('bad bytes input');
+  }
+
+  function rand(n) {
+    const b = new Uint8Array(n);
+    C.getRandomValues(b);
+    return b;
+  }
+
+  // base64url without padding
+  function b64(u8) {
+    u8 = bytes(u8);
+    let s = '';
+    for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]);
+    const enc = typeof btoa === 'function' ? btoa(s) : Buffer.from(s, 'binary').toString('base64');
+    return enc.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function unb64(str) {
+    str = String(str).replace(/-/g, '+').replace(/_/g, '/');
+    while (str.length % 4) str += '=';
+    const bin = typeof atob === 'function' ? atob(str) : Buffer.from(str, 'base64').toString('binary');
+    const u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return u8;
+  }
+
+  const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  function base32Encode(u8) {
+    let bits = 0, value = 0, out = '';
+    for (const byte of u8) {
+      value = (value << 8) | byte; bits += 8;
+      while (bits >= 5) { out += B32[(value >>> (bits - 5)) & 31]; bits -= 5; }
+    }
+    if (bits > 0) out += B32[(value << (5 - bits)) & 31];
+    return out;
+  }
+  function base32Decode(str) {
+    const clean = String(str).toUpperCase().replace(/[^A-Z2-7]/g, '');
+    let bits = 0, value = 0; const out = [];
+    for (const ch of clean) {
+      value = (value << 5) | B32.indexOf(ch); bits += 5;
+      if (bits >= 8) { out.push((value >>> (bits - 8)) & 255); bits -= 8; }
+    }
+    return new Uint8Array(out);
+  }
+
+  async function hmac(key, data, hash) {
+    const k = await S.importKey('raw', bytes(key), { name: 'HMAC', hash: hash || 'SHA-256' }, false, ['sign']);
+    return new Uint8Array(await S.sign('HMAC', k, bytes(data)));
+  }
+
+  async function sha256(data) {
+    return new Uint8Array(await S.digest('SHA-256', bytes(data)));
+  }
+
+  async function pbkdf2(password, salt, iter) {
+    const base = await S.importKey('raw', TE.encode(password.normalize('NFC')), 'PBKDF2', false, ['deriveBits']);
+    const bits = await S.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: bytes(salt), iterations: iter || PBKDF2_ITER }, base, 256);
+    return new Uint8Array(bits);
+  }
+
+  function equal(a, b) {
+    a = bytes(a); b = bytes(b);
+    if (a.length !== b.length) return false;
+    let d = 0;
+    for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
+    return d === 0;
+  }
+
+  // RFC 6238 TOTP (HMAC-SHA1, 6 digits, 30 s)
+  async function totpAt(secret, counter) {
+    const msg = new Uint8Array(8);
+    let c = counter;
+    for (let i = 7; i >= 0; i--) { msg[i] = c & 0xff; c = Math.floor(c / 256); }
+    const h = await hmac(secret, msg, 'SHA-1');
+    const o = h[h.length - 1] & 0x0f;
+    const bin = ((h[o] & 0x7f) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3];
+    return String(bin % 10 ** TOTP_DIGITS).padStart(TOTP_DIGITS, '0');
+  }
+  function totpCounter(nowMs) {
+    return Math.floor((nowMs == null ? Date.now() : nowMs) / 1000 / TOTP_PERIOD);
+  }
+
+  // ---- Auth messages --------------------------------------------------------
+  // Password is never sent. The client proves knowledge of K = PBKDF2(password)
+  // AND the current authenticator code, bound to fresh nonces from both sides.
+  function authProof(K, cn, hn, code, viewOnly) {
+    return hmac(K, `auth|${cn}|${hn}|${code}|${viewOnly ? 1 : 0}`);
+  }
+  function sessionKey(K, cn, hn, code) {
+    return hmac(K, `sess|${cn}|${hn}|${code}`);
+  }
+  function resumeProof(token, cn, hn, viewOnly) {
+    return hmac(token, `resume|${cn}|${hn}|${viewOnly ? 1 : 0}`);
+  }
+  function resumeKey(token, cn, hn) {
+    return hmac(token, `rsess|${cn}|${hn}`);
+  }
+
+  // Trusted-device login: password + a 256-bit key the PC gave this Chromebook after one code login.
+  function deviceSecret(devKey, K) {
+    return hmac(devKey, K);
+  }
+  function deviceProof(dk, cn, hn, viewOnly) {
+    return hmac(dk, `dauth|${cn}|${hn}|${viewOnly ? 1 : 0}`);
+  }
+  function deviceSessionKey(dk, cn, hn) {
+    return hmac(dk, `dsess|${cn}|${hn}`);
+  }
+
+  // ---- AES-256-GCM envelope for everything after login ----------------------
+  async function aesKey(raw) {
+    return S.importKey('raw', bytes(raw), 'AES-GCM', false, ['encrypt', 'decrypt']);
+  }
+  async function seal(key, obj, aad) {
+    const iv = rand(12);
+    const ct = await S.encrypt({ name: 'AES-GCM', iv, additionalData: TE.encode(aad) }, key, TE.encode(JSON.stringify(obj)));
+    return { iv: b64(iv), ct: b64(new Uint8Array(ct)) };
+  }
+  async function open(key, env, aad) {
+    const pt = await S.decrypt({ name: 'AES-GCM', iv: unb64(env.iv), additionalData: TE.encode(aad) }, key, unb64(env.ct));
+    return JSON.parse(TD.decode(pt));
+  }
+
+  const api = {
+    PBKDF2_ITER, TOTP_PERIOD, TOTP_DIGITS,
+    rand, b64, unb64, base32Encode, base32Decode, hmac, sha256, pbkdf2, equal,
+    totpAt, totpCounter, authProof, sessionKey, resumeProof, resumeKey, deviceSecret, deviceProof, deviceSessionKey,
+    aesKey, seal, open, utf8: (s) => TE.encode(s),
+  };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.RLProto = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>/* Minimal Supabase Realtime (Phoenix protocol vsn 1.0.0) broadcast client.
+ * Same wire format as @supabase/supabase-js, without the 200 KB dependency.
+ * Works in browsers and in Node/Electron (pass a WebSocket implementation).
+ */
+(function (root) {
+  'use strict';
+  const BACKOFF = [1000, 2000, 4000, 8000, 15000, 30000];
+
+  class RT {
+    /**
+     * @param {object} o
+     * @param {string} o.url      https://<ref>.supabase.co
+     * @param {string} o.key      publishable key
+     * @param {string} o.topic    channel name (without the "realtime:" prefix)
+     * @param {function} o.onMessage (payload) => void
+     * @param {function} [o.onStatus] ('connecting'|'joined'|'closed'|'error', detail) => void
+     * @param {function} [o.WebSocket] constructor (defaults to global)
+     */
+    constructor(o) {
+      this.o = o;
+      this.WS = o.WebSocket || globalThis.WebSocket;
+      this.topic = 'realtime:' + o.topic;
+      this.ref = 0;
+      this.joinRef = null;
+      this.joined = false;
+      this.queue = [];
+      this.tries = 0;
+      this.closed = false;
+      this.ws = null;
+      this.hbTimer = null;
+      this.pendingHb = null;
+    }
+
+    _status(s, d) { try { this.o.onStatus && this.o.onStatus(s, d); } catch (e) { /* ignore */ } }
+    _nextRef() { return String(++this.ref); }
+
+    connect() {
+      this.closed = false;
+      const base = this.o.url.replace(/\/+$/, '').replace(/^http/, 'ws');
+      const u = `${base}/realtime/v1/websocket?apikey=${encodeURIComponent(this.o.key)}&vsn=1.0.0`;
+      this._status('connecting');
+      let ws;
+      try { ws = new this.WS(u); } catch (e) { this._status('error', String(e)); return this._retry(); }
+      this.ws = ws;
+      ws.onopen = () => {
+        this.tries = 0;
+        this.joinRef = this._nextRef();
+        this._raw({
+          topic: this.topic, event: 'phx_join',
+          payload: { config: { broadcast: { self: false, ack: false }, presence: { key: '', enabled: false }, postgres_changes: [], private: false } },
+          ref: this.joinRef, join_ref: this.joinRef,
+        });
+        clearInterval(this.hbTimer);
+        this.hbTimer = setInterval(() => this._heartbeat(), 25000);
+      };
+      ws.onmessage = (ev) => {
+        let m;
+        try { m = JSON.parse(typeof ev.data === 'string' ? ev.data : String(ev.data)); } catch (e) { return; }
+        if (m.topic === 'phoenix' && m.event === 'phx_reply') { if (m.ref === this.pendingHb) this.pendingHb = null; return; }
+        if (m.topic !== this.topic) return;
+        if (m.event === 'phx_reply' && m.ref === this.joinRef) {
+          if (m.payload && m.payload.status === 'ok') {
+            this.joined = true;
+            this._status('joined');
+            const q = this.queue; this.queue = [];
+            q.forEach((p) => this.send(p));
+          } else {
+            this._status('error', m.payload && m.payload.response);
+            try { ws.close(); } catch (e) { /* ignore */ }
+          }
+          return;
+        }
+        if (m.event === 'phx_error' || m.event === 'phx_close') { try { ws.close(); } catch (e) { /* ignore */ } return; }
+        if (m.event === 'broadcast' && m.payload && m.payload.event === 'sig') {
+          try { this.o.onMessage(m.payload.payload); } catch (e) { console.error(e); }
+        }
+      };
+      ws.onclose = () => {
+        this.joined = false;
+        clearInterval(this.hbTimer);
+        if (this.ws === ws) this.ws = null;
+        this._status('closed');
+        if (!this.closed) this._retry();
+      };
+      ws.onerror = () => { /* onclose follows */ };
+    }
+
+    _retry() {
+      const d = BACKOFF[Math.min(this.tries++, BACKOFF.length - 1)];
+      setTimeout(() => { if (!this.closed && !this.ws) this.connect(); }, d);
+    }
+
+    _heartbeat() {
+      if (!this.ws) return;
+      if (this.pendingHb) { // previous heartbeat never answered: connection is dead
+        this.pendingHb = null;
+        const ws = this.ws;
+        this.ws = null;
+        this.joined = false;
+        clearInterval(this.hbTimer);
+        ws.onclose = null; ws.onmessage = null;
+        try { ws.close(); } catch (e) { /* ignore */ }
+        this._status('closed');
+        if (!this.closed) this._retry();
+        return;
+      }
+      this.pendingHb = this._nextRef();
+      this._raw({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: this.pendingHb });
+    }
+
+    _raw(obj) {
+      if (this.ws && this.ws.readyState === 1) { this.ws.send(JSON.stringify(obj)); return true; }
+      return false;
+    }
+
+    send(payload) {
+      if (!this.joined) { if (this.queue.length < 50) this.queue.push(payload); return; }
+      this._raw({ topic: this.topic, event: 'broadcast', payload: { type: 'broadcast', event: 'sig', payload }, ref: this._nextRef(), join_ref: this.joinRef });
+    }
+
+    close() {
+      this.closed = true;
+      clearInterval(this.hbTimer);
+      if (this.ws) { try { this.ws.close(); } catch (e) { /* ignore */ } }
+      this.ws = null;
+      this.joined = false;
+    }
+  }
+
+  if (typeof module === 'object' && module.exports) module.exports = RT;
+  else root.RLRealtime = RT;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+'use strict';
+(function () {
+  const P = window.RLProto, RT = window.RLRealtime;
+  const DEFAULT_SIGNAL = { url: 'https://sbpbamajbbwuxjjcnkkl.supabase.co', key: 'sb_publishable_x9imtiSPZ9dPatRD__5rBA_adoHUHvZ' };
+  const STORE = 'remotelink.pair.v1', PREFS = 'remotelink.prefs.v1';
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
+  };
+  const BYE = {
+    panic: 'Remote access was paused on the PC (panic key or tray menu).',
+    idle: 'Disconnected: the session was idle for too long.',
+    replaced: 'Another device logged in to this PC.',
+    'host-disconnected': 'The session was ended from the PC.',
+    'host-restarted': 'RemoteLink on the PC restarted or its settings changed. Log in again.',
+    'host-quit': 'RemoteLink was closed on the PC.',
+    'capture-failed': "The PC couldn't capture its screen.",
+    'client-disconnected': 'Disconnected.',
+  };
+
+  // ------------------------------------------------------------ views
+  function view(name) {
+    for (const v of ['pairView', 'loginView', 'sessionView']) $(v).classList.toggle('on', v === name);
+  }
+  function status(id, text, kind, spin) {
+    const el = $(id);
+    el.className = 'status' + (kind ? ' ' + kind : '');
+    el.textContent = '';
+    if (spin) { const s = document.createElement('span'); s.className = 'spin'; el.appendChild(s); }
+    el.appendChild(document.createTextNode(text || ''));
+  }
+  let toastTimer = null;
+  function toast(text, ms) {
+    const t = $('toast');
+    t.textContent = text; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms || 2600);
+  }
+  function overlay(text) {
+    $('overlay').classList.toggle('on', !!text);
+    if (text) $('overlayText').textContent = text;
+  }
+
+  // ------------------------------------------------------------ pairing
+  function parsePairing(raw) {
+    raw = String(raw || '').trim();
+    let room = raw, extra = {};
+    const h = raw.indexOf('pair=');
+    if (h >= 0) {
+      const q = new URLSearchParams(raw.slice(h));
+      room = q.get('pair') || '';
+      extra = { name: q.get('n') || '', url: q.get('u') || '', key: q.get('k') || '' };
+    }
+    room = room.toLowerCase().replace(/[^a-z2-7]/g, '');
+    if (room.length !== 24) return null;
+    return { room, name: extra.name || 'your PC', url: extra.url || '', key: extra.key || '' };
+  }
+  function getPair() {
+    const p = store.get(STORE);
+    if (!p || !p.room) return null;
+    const dev = p.dev && typeof p.dev.id === 'string' && typeof p.dev.k === 'string' ? p.dev : null;
+    return { room: p.room, name: p.name || 'your PC', url: p.url || DEFAULT_SIGNAL.url, key: p.key || DEFAULT_SIGNAL.key, dev };
+  }
+  function savePair(p) {
+    const custom = p.url && p.key && (p.url !== DEFAULT_SIGNAL.url || p.key !== DEFAULT_SIGNAL.key);
+    store.set(STORE, { room: p.room, name: p.name, url: custom ? p.url : '', key: custom ? p.key : '', dev: p.dev || null });
+  }
+  // Trusted-device key: the PC hands it out after one login with the code; with it, the password is enough.
+  function forgetDevice() { const p = getPair(); if (p && p.dev) { p.dev = null; savePair(p); } }
+  function deviceLabel() {
+    const ua = navigator.userAgent;
+    const kind = /CrOS/.test(ua) ? 'Chromebook' : /Windows/.test(ua) ? 'Windows PC' : /Mac OS/.test(ua) ? 'Mac' : /Android/.test(ua) ? 'Android' : 'Browser';
+    const ch = (ua.match(/Chrome\/(\d+)/) || [])[1];
+    const d = new Date();
+    return `${kind}${ch ? ' (Chrome ' + ch + ')' : ''} · ${d.getDate()}/${d.getMonth() + 1}`;
+  }
+  $('useCode').onclick = () => { forgetDevice(); showLogin('This Chromebook will use the code again.'); };
+  $('pairBtn').onclick = doPair;
+  $('pairInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') doPair(); });
+  function doPair() {
+    const p = parsePairing($('pairInput').value);
+    if (!p) { status('pairStatus', 'That code is not valid. It has 24 letters/numbers (dashes optional).', 'err'); return; }
+    const u = $('pairUrl').value.trim(), k = $('pairKey').value.trim();
+    if (u && k) { p.url = u.replace(/\/+$/, ''); p.key = k; }
+    savePair(p);
+    $('pairInput').value = '';
+    showLogin();
+  }
+  $('unpairBtn').onclick = () => {
+    if (!confirm('Unpair this Chromebook? You will need the pairing code again.')) return;
+    store.del(STORE); resume = null; view('pairView'); $('pairInput').focus();
+  };
+
+  // ------------------------------------------------------------ login screen
+  const prefs = Object.assign({ mode: 'desktop', quality: '20000', fps: '60', codec: 'h264', audio: '1', fullRes: false, fs: true, localCursor: false }, store.get(PREFS) || {});
+  function savePrefs() { store.set(PREFS, prefs); }
+  function setMode(m, fromBar) {
+    prefs.mode = m === 'game' ? 'game' : 'desktop'; savePrefs();
+    for (const b of document.querySelectorAll('#modeSeg button, #barMode button')) b.classList.toggle('on', b.dataset.mode === prefs.mode);
+    if (fromBar && live()) {
+      ctl(['mode', prefs.mode]);
+      if (prefs.mode === 'game') { lockPointer(); toast('Game mode: mouse captured. Press Esc to release it.'); }
+      else { if (document.pointerLockElement) document.exitPointerLock(); toast('Desktop mode'); }
+    }
+  }
+  for (const b of document.querySelectorAll('#modeSeg button')) b.onclick = () => setMode(b.dataset.mode);
+  for (const b of document.querySelectorAll('#barMode button')) b.onclick = () => setMode(b.dataset.mode, true);
+
+  function showLogin(msg, kind) {
+    const pair = getPair();
+    if (!pair) { view('pairView'); $('pairInput').focus(); return; }
+    $('pcName').textContent = pair.name;
+    $('quality').value = prefs.quality; $('fps').value = prefs.fps; $('codec').value = prefs.codec; $('audio').value = prefs.audio;
+    $('fullRes').checked = !!prefs.fullRes; $('fsOnConnect').checked = prefs.fs !== false;
+    setMode(prefs.mode);
+    $('connectBtn').disabled = false;
+    const trusted = !!pair.dev;
+    $('codeBox').classList.toggle('hidden', trusted);
+    $('trustedNote').classList.toggle('hidden', !trusted);
+    const canResume = resume && resume.droppedAt && Date.now() - resume.droppedAt < 9.5 * 60e3;
+    $('resumeBtn').classList.toggle('hidden', !canResume);
+    view('loginView');
+    status('loginStatus', msg || '', kind);
+    (($('pw').value && !trusted) ? $('code') : $('pw')).focus();
+  }
+  for (const id of ['quality', 'fps', 'codec', 'audio']) $(id).onchange = () => { prefs[id] = $(id).value; savePrefs(); };
+  $('fullRes').onchange = () => { prefs.fullRes = $('fullRes').checked; savePrefs(); };
+  $('fsOnConnect').onchange = () => { prefs.fs = $('fsOnConnect').checked; savePrefs(); };
+  $('code').addEventListener('input', () => {
+    const c = $('code').value.replace(/\D/g, '').slice(0, 6);
+    $('code').value = c;
+    if (c.length === 6 && $('pw').value) startLogin();
+  });
+  $('pw').addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const pr = getPair();
+    if ((pr && pr.dev) || $('code').value.length === 6) startLogin(); else $('code').focus();
+  });
+  $('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') startLogin(); });
+  $('connectBtn').onclick = startLogin;
+  $('resumeBtn').onclick = () => {
+    if (!resume || (link && !link.closed)) return;
+    reconnects = 0;
+    if (prefs.fs !== false) goFullscreen();
+    reconnect(resume.display);
+  };
+
+  function startLogin() {
+    if (link && !link.closed) return;
+    const pr = getPair();
+    const trusted = !!(pr && pr.dev);
+    const pw = $('pw').value, code = $('code').value.replace(/\D/g, '');
+    if (!pw) { status('loginStatus', 'Type your password.', 'err'); $('pw').focus(); return; }
+    if (!trusted && code.length !== 6) { status('loginStatus', 'Type the 6-digit code from your authenticator app.', 'err'); $('code').focus(); return; }
+    $('pw').value = ''; $('code').value = '';
+    if (prefs.fs !== false) goFullscreen(); // uses this click/keypress as the required user gesture
+    if (trusted) connect({ mode: 'device', password: pw, viewOnly: $('viewOnly').checked });
+    else connect({ mode: 'otp', password: pw, code, viewOnly: $('viewOnly').checked, remember: $('remember').checked });
+  }
+
+  // ------------------------------------------------------------ connection
+  let link = null;      // current connection attempt / session
+  let resume = null;    // {tid, token, viewOnly} — memory only, lets a dropped session come back without a new code
+  let reconnects = 0;
+  const live = () => link && link.live && !link.closed;
+
+  function currentPrefs() {
+    const scr = Math.round((window.screen.height || 1080) * (window.devicePixelRatio || 1));
+    return {
+      mode: prefs.mode, codec: prefs.codec, maxKbps: Number(prefs.quality) || 20000, fps: Number(prefs.fps) === 30 ? 30 : 60,
+      screenH: scr, audio: prefs.audio !== '0', fullRes: !!prefs.fullRes, display: link && link.display ? String(link.display) : null,
+    };
+  }
+
+  function connect(o) {
+    const pair = getPair();
+    if (!pair) return showLogin();
+    const L = {
+      mode: o.mode, viewOnly: !!o.viewOnly, sid: P.b64(P.rand(12)), cn: P.b64(P.rand(16)),
+      sendN: 0, recvN: 0, closed: false, live: false, dc: {}, pendingIce: [], timers: [], pair,
+      display: o.display || null,
+    };
+    link = L;
+    $('connectBtn').disabled = true;
+    const say = (t) => (o.mode === 'resume' ? overlay(t) : status('loginStatus', t, '', true));
+    say('Contacting your PC…');
+    let signalTrouble = 0;
+    L.rt = new RT({
+      url: pair.url, key: pair.key, topic: 'rl:' + pair.room,
+      onMessage: (m) => onSignal(L, m, o, say).catch((e) => fail(L, 'Error: ' + (e && e.message))),
+      onStatus: (s) => { if (s === 'closed' && ++signalTrouble === 3 && !L.hn) say("Can't reach the signaling server. The network may be blocking supabase.co…"); },
+    });
+    L.rt.connect();
+    L.rt.send({ from: 'c', t: 'hello', sid: L.sid, cn: L.cn });
+    L.timers.push(setTimeout(() => {
+      if (!L.hn && !L.closed) fail(L, "Your PC didn't answer.\nIs it on, awake, online, with RemoteLink running in the tray?");
+    }, 15000));
+  }
+
+  async function onSignal(L, m, o, say) {
+    if (L !== link || L.closed || !m || m.from !== 'h' || m.sid !== L.sid) return;
+    if (m.t === 'paused') return fail(L, 'Remote access is paused on the PC. Resume it from the RemoteLink tray icon.');
+    if (m.t === 'locked') return fail(L, `Too many wrong attempts. Logins are locked for ${Math.ceil(m.retryIn / 60)} more minute(s).`);
+    if (m.t === 'challenge') {
+      if (L.hn) return;
+      L.hn = m.hn;
+      if (m.name && m.name !== L.pair.name) { L.pair.name = m.name; savePair(L.pair); $('pcName').textContent = m.name; }
+      let proof, raw;
+      if (o.mode === 'resume') {
+        proof = await P.resumeProof(resume.token, L.cn, L.hn, L.viewOnly);
+        raw = await P.resumeKey(resume.token, L.cn, L.hn);
+      } else {
+        if (!(m.iter >= 100000 && m.iter <= 3000000)) return fail(L, 'The PC sent strange login parameters. Refusing.');
+        say('Checking password…');
+        const K = await P.pbkdf2(o.password, P.unb64(m.salt), m.iter);
+        if (o.mode === 'device') {
+          const dk = await P.deviceSecret(P.unb64(L.pair.dev.k), K);
+          proof = await P.deviceProof(dk, L.cn, L.hn, L.viewOnly);
+          raw = await P.deviceSessionKey(dk, L.cn, L.hn);
+        } else {
+          proof = await P.authProof(K, L.cn, L.hn, o.code, L.viewOnly);
+          raw = await P.sessionKey(K, L.cn, L.hn, o.code);
+        }
+        o.password = null;
+      }
+      L.key = await P.aesKey(raw);
+      L.rt.send({
+        from: 'c', t: 'auth', sid: L.sid, mode: o.mode, proof: P.b64(proof), viewOnly: L.viewOnly,
+        tid: o.mode === 'resume' ? resume.tid : undefined,
+        did: o.mode === 'device' ? L.pair.dev.id : undefined,
+        remember: o.mode === 'otp' ? !!o.remember : undefined,
+        devName: o.mode === 'otp' && o.remember ? deviceLabel() : undefined,
+      });
+      say('Logging in…');
+      L.timers.push(setTimeout(() => { if (!L.welcomed && !L.closed) fail(L, 'The PC stopped answering during login.'); }, 15000));
+      return;
+    }
+    if (m.t === 'denied') {
+      if (o.mode === 'resume') { resume = null; return fail(L, 'Your session expired. Log in again.'); }
+      const left = `${m.left} ${m.left === 1 ? 'try' : 'tries'} left before logins are locked.`;
+      if (o.mode === 'device' && m.unknownDevice) { forgetDevice(); return fail(L, "This Chromebook isn't trusted any more (it was removed on the PC).\nEnter the authenticator code once. " + left); }
+      return fail(L, (o.mode === 'device' ? 'Wrong password. ' : 'Wrong password or code. ') + left);
+    }
+    if (m.t === 'sec' && L.key) {
+      let msg;
+      try { msg = await P.open(L.key, m, `${L.sid}|h2c`); } catch (e) { return; } // not for us / forged
+      if (typeof msg.n !== 'number' || msg.n <= L.recvN) return;
+      L.recvN = msg.n;
+      await onSecure(L, msg, say);
+    }
+  }
+
+  async function sendSecure(L, obj) {
+    if (!L.key || L.closed) return;
+    const env = await P.seal(L.key, Object.assign({ n: ++L.sendN }, obj), `${L.sid}|c2h`);
+    L.rt.send({ from: 'c', t: 'sec', sid: L.sid, iv: env.iv, ct: env.ct });
+  }
+
+  async function onSecure(L, msg, say) {
+    if (msg.t === 'welcome') {
+      L.welcomed = true;
+      L.viewOnly = !!msg.viewOnly;
+      L.ice = msg.iceServers || [];
+      L.name = msg.name || L.pair.name;
+      resume = msg.resume ? { tid: msg.resume.tid, token: P.unb64(msg.resume.token), viewOnly: L.viewOnly, droppedAt: 0 } : null;
+      if (msg.device && msg.device.id && msg.device.key) {
+        const pr = getPair();
+        if (pr) { pr.dev = { id: String(msg.device.id), k: String(msg.device.key) }; savePair(pr); L.pair.dev = pr.dev; }
+        toast('This Chromebook is now trusted: next time only the password.', 4000);
+      }
+      say('Starting the stream…');
+      await sendSecure(L, { t: 'ready', prefs: currentPrefs() });
+      L.timers.push(setTimeout(() => { if (!L.live && !L.closed) fail(L, "The stream didn't start. The network may be blocking video connections (set up the Cloudflare relay on the PC)."); }, 25000));
+    } else if (msg.t === 'offer') {
+      await setupPeer(L, msg.sdp);
+    } else if (msg.t === 'ice' && msg.c) {
+      if (L.pc && L.pc.remoteDescription) L.pc.addIceCandidate(msg.c).catch(() => {});
+      else L.pendingIce.push(msg.c);
+    } else if (msg.t === 'bye') {
+      ended(L, msg.reason);
+    }
+  }
+
+  async function setupPeer(L, sdp) {
+    const pc = new RTCPeerConnection({ iceServers: L.ice, bundlePolicy: 'max-bundle' });
+    L.pc = pc;
+    const ms = new MediaStream();
+    pc.ontrack = (e) => {
+      try { e.receiver.jitterBufferTarget = 0; } catch (err) { /* older Chrome */ }
+      try { e.receiver.playoutDelayHint = 0; } catch (err) { /* ignore */ }
+      ms.addTrack(e.track);
+      const v = $('v');
+      if (v.srcObject !== ms) v.srcObject = ms;
+      v.muted = muted;
+      v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+    };
+    pc.ondatachannel = (e) => {
+      const ch = e.channel;
+      L.dc[ch.label] = ch;
+      if (ch.label === 'ctl') {
+        ch.onmessage = (ev) => onCtl(L, ev.data);
+        ch.onopen = () => goLive(L);
+        ch.onclose = () => { if (L === link && L.live && !L.closed) lost(L); };
+      }
+    };
+    pc.onicecandidate = (e) => { if (e.candidate) sendSecure(L, { t: 'ice', c: e.candidate.toJSON() }); };
+    pc.onconnectionstatechange = () => {
+      if (L !== link || L.closed) return;
+      const st = pc.connectionState;
+      clearTimeout(L.dropTimer);
+      if (st === 'connected') overlay(null);
+      else if (st === 'disconnected' && L.live) {
+        overlay('Connection unstable…');
+        L.dropTimer = setTimeout(() => { if (pc.connectionState !== 'connected') lost(L); }, 8000);
+      } else if (st === 'failed') lost(L);
+    };
+    await pc.setRemoteDescription({ type: 'offer', sdp });
+    for (const c of L.pendingIce.splice(0)) pc.addIceCandidate(c).catch(() => {});
+    const ans = await pc.createAnswer();
+    await pc.setLocalDescription(ans);
+    await sendSecure(L, { t: 'answer', sdp: pc.localDescription.sdp });
+  }
+
+  function goLive(L) {
+    if (L !== link || L.closed) return;
+    L.live = true;
+    reconnects = 0;
+    L.timers.forEach(clearTimeout); L.timers = [];
+    $('connectBtn').disabled = false;
+    status('loginStatus', '');
+    $('barName').textContent = L.name;
+    $('voTag').classList.toggle('hidden', !L.viewOnly);
+    $('barQuality').value = prefs.quality;
+    setMode(prefs.mode);
+    applyCursor();
+    view('sessionView');
+    overlay(null);
+    showBar(true, 2500);
+    $('surface').focus();
+    startStats(L);
+    L.pingTimer = setInterval(() => {
+      const active = lastInput > L.lastPing;
+      L.lastPing = performance.now();
+      ctl(['ping', Math.round(performance.now()), active ? 1 : 0]);
+    }, 2000);
+    L.lastPing = performance.now();
+    if (prefs.mode === 'game' && !L.viewOnly) toast('Game mode: click to capture the mouse. Esc releases it.', 3500);
+  }
+
+  function onCtl(L, raw) {
+    let a; try { a = JSON.parse(raw); } catch (e) { return; }
+    if (!Array.isArray(a)) return;
+    switch (a[0]) {
+      case 'hello': {
+        const h = a[1] || {};
+        L.displays = h.displays || [];
+        L.display = h.display;
+        const sel = $('barDisplay');
+        sel.textContent = '';
+        L.displays.forEach((d, i) => {
+          const op = document.createElement('option');
+          op.value = d.id; op.textContent = `Screen ${i + 1}${d.primary ? ' (main)' : ''} · ${d.w}×${d.h}`;
+          sel.appendChild(op);
+        });
+        sel.value = h.display;
+        sel.classList.toggle('hidden', L.displays.length < 2);
+        if (!h.audio) $('muteBtn').classList.add('hidden'); else $('muteBtn').classList.remove('hidden');
+        break;
+      }
+      case 'pong': L.appRtt = Math.round(performance.now() - a[1]); break;
+      case 'clip':
+        navigator.clipboard.writeText(String(a[1] || '')).then(() => toast('PC clipboard copied here.'), () => toast("This Chromebook didn't allow clipboard access."));
+        break;
+      case 'disp': L.display = a[1]; $('barDisplay').value = a[1]; toast('Switched screen'); break;
+      case 'note': toast(String(a[1] || ''), 6000); break;
+      case 'bye': ended(L, a[1]); break;
+      default: break;
+    }
+  }
+
+  function closeLink(L) {
+    if (!L || L.closed) return;
+    L.closed = true;
+    L.live = false;
+    L.timers.forEach(clearTimeout);
+    clearTimeout(L.dropTimer);
+    clearInterval(L.pingTimer);
+    stopStats();
+    releaseAll(false);
+    try { L.pc && L.pc.close(); } catch (e) { /* ignore */ }
+    setTimeout(() => { try { L.rt.close(); } catch (e) { /* ignore */ } }, 400);
+    if (document.pointerLockElement) document.exitPointerLock();
+    $('v').srcObject = null;
+  }
+
+  function fail(L, text) {
+    if (L !== link) return;
+    const wasResume = L.mode === 'resume';
+    closeLink(L);
+    overlay(null);
+    if (wasResume && resume && reconnects < 3) return setTimeout(() => reconnect(), 1500);
+    showLogin(text + (resume && resume.droppedAt ? '\nYou can still reconnect without a new code for a few minutes.' : ''), 'err');
+  }
+
+  function ended(L, reason) {
+    if (L !== link || L.closed) return;
+    resume = null;
+    closeLink(L);
+    overlay(null);
+    exitFullscreen();
+    showLogin(BYE[reason] || 'The PC ended the session.', reason === 'client-disconnected' ? 'ok' : 'err');
+  }
+
+  function lost(L) {
+    if (L !== link || L.closed) return;
+    const display = L.display;
+    closeLink(L);
+    if (resume && !resume.droppedAt) { resume.droppedAt = Date.now(); resume.display = display; }
+    if (resume && reconnects < 3) {
+      view('sessionView');
+      overlay('Connection lost — reconnecting…');
+      setTimeout(() => reconnect(display), 600);
+    } else {
+      exitFullscreen();
+      showLogin('Connection lost. Log in again.', 'err');
+    }
+  }
+
+  function reconnect(display) {
+    reconnects++;
+    if (!resume) return showLogin('Connection lost. Log in again.', 'err');
+    view('sessionView');
+    overlay(`Reconnecting… (try ${reconnects}/3)`);
+    connect({ mode: 'resume', viewOnly: resume.viewOnly, display });
+  }
+
+  function disconnect() {
+    const L = link;
+    if (!L) return;
+    ctl(['bye']);
+    if (L.key) sendSecure(L, { t: 'bye' });
+    resume = null;
+    setTimeout(() => { closeLink(L); exitFullscreen(); showLogin('Disconnected.', 'ok'); }, 120);
+  }
+
+  // ------------------------------------------------------------ input → PC
+  let lastInput = 0;
+  const down = new Set();
+  let muted = false;
+  function ctl(a) { const L = link; if (L && L.dc.ctl && L.dc.ctl.readyState === 'open') L.dc.ctl.send(JSON.stringify(a)); }
+  function chan(name, a) { const L = link; const c = L && L.dc[name]; if (c && c.readyState === 'open') c.send(JSON.stringify(a)); }
+  const canControl = () => live() && !link.viewOnly;
+  const typing = () => $('modal').classList.contains('on') || (document.activeElement && /^(SELECT|TEXTAREA|INPUT)$/.test(document.activeElement.tagName));
+
+  function normPos(e) {
+    const v = $('v');
+    const vw = v.videoWidth, vh = v.videoHeight;
+    if (!vw || !vh) return null;
+    const r = v.getBoundingClientRect();
+    const s = Math.min(r.width / vw, r.height / vh);
+    const cw = vw * s, ch = vh * s;
+    const ox = r.left + (r.width - cw) / 2, oy = r.top + (r.height - ch) / 2;
+    const x = (e.clientX - ox) / cw, y = (e.clientY - oy) / ch;
+    return [Math.round(Math.min(1, Math.max(0, x)) * 1e5) / 1e5, Math.round(Math.min(1, Math.max(0, y)) * 1e5) / 1e5];
+  }
+
+  const surface = $('surface');
+  let lastMove = '', mseq = 0, lastPos = null, settleTimer = null;
+  // Every position carries a sequence number so the PC can drop late/out-of-order packets,
+  // and once the mouse rests the final position is re-sent on the reliable channel.
+  function sendPos(p) {
+    lastPos = p;
+    chan('mv', ['m', p[0], p[1], ++mseq]);
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(() => { if (lastPos && canControl()) ctl(['m', lastPos[0], lastPos[1], mseq]); }, 60);
+  }
+  function onMove(e) {
+    lastInput = performance.now();
+    if (!canControl()) return;
+    if (document.pointerLockElement === surface) {
+      if (e.movementX || e.movementY) chan('rel', ['r', e.movementX, e.movementY]);
+      return;
+    }
+    if (prefs.mode === 'game') return;
+    const p = normPos(e);
+    if (!p) return;
+    const k = p[0] + ',' + p[1];
+    if (k === lastMove) return;
+    lastMove = k;
+    sendPos(p);
+  }
+  // pointerrawupdate is not frame-aligned (lower latency); pointermove is the fallback if it never fires
+  let rawSeen = 0;
+  surface.addEventListener('pointerrawupdate', (e) => { rawSeen = performance.now(); onMove(e); });
+  surface.addEventListener('pointermove', (e) => { if (performance.now() - rawSeen > 250) onMove(e); });
+  surface.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    surface.focus();
+    closeMenus();
+    lastInput = performance.now();
+    if (!canControl()) return;
+    if (prefs.mode === 'game' && document.pointerLockElement !== surface) { lockPointer(); return; }
+    const p = document.pointerLockElement === surface ? null : normPos(e);
+    if (p) lastPos = p;
+    ctl(p ? ['b', e.button, 1, p[0], p[1], ++mseq] : ['b', e.button, 1]);
+    down.add('b' + e.button);
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (!down.has('b' + e.button)) return;
+    down.delete('b' + e.button);
+    const p = document.pointerLockElement === surface ? null : normPos(e);
+    if (p) lastPos = p;
+    ctl(p ? ['b', e.button, 0, p[0], p[1], ++mseq] : ['b', e.button, 0]);
+  });
+  surface.addEventListener('contextmenu', (e) => e.preventDefault());
+  surface.addEventListener('auxclick', (e) => e.preventDefault());
+  const wheelAcc = { x: 0, y: 0 };
+  surface.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    lastInput = performance.now();
+    if (!canControl()) return;
+    const k = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? 360 : 1.2; // → Windows wheel units (120 per notch)
+    wheelAcc.y += e.deltaY * k; wheelAcc.x += e.deltaX * k;
+    const y = Math.trunc(wheelAcc.y), x = Math.trunc(wheelAcc.x);
+    wheelAcc.y -= y; wheelAcc.x -= x;
+    if (x || y) ctl(['w', y, x]);
+  }, { passive: false });
+
+  function lockPointer() {
+    if (!canControl()) return;
+    const r = surface.requestPointerLock({ unadjustedMovement: true });
+    if (r && r.catch) r.catch(() => { try { surface.requestPointerLock(); } catch (e) { /* ignore */ } });
+  }
+  document.addEventListener('pointerlockchange', () => {
+    if (!live()) return;
+    if (!document.pointerLockElement && prefs.mode === 'game') toast('Mouse released. Click the screen to capture it again.');
+  });
+
+  const LOCAL = { KeyF: toggleFullscreen, KeyG: () => setMode(prefs.mode === 'game' ? 'desktop' : 'game', true), KeyS: toggleStats,
+    KeyH: () => { barPinned = !barPinned; showBar(barPinned); toast(barPinned ? 'Toolbar pinned' : 'Toolbar auto-hides (move mouse to the top edge)'); },
+    KeyQ: disconnect, KeyT: openType, KeyM: toggleMute, KeyC: toggleLocalCursor };
+  // Only one cursor: by default the Chromebook's own pointer is hidden over the stream, so the one you see
+  // is the PC's real cursor — exactly where clicks land, with the right shape (text, hand, resize…).
+  function applyCursor() {
+    const hide = !prefs.localCursor && !(link && link.viewOnly);
+    surface.classList.toggle('nocursor', hide);
+    $('curBtn').style.color = prefs.localCursor ? 'var(--pink)' : '';
+  }
+  function toggleLocalCursor() {
+    prefs.localCursor = !prefs.localCursor; savePrefs(); applyCursor();
+    toast(prefs.localCursor ? "Chromebook cursor shown too (you'll see two)" : "Showing only the PC's cursor");
+  }
+  window.addEventListener('keydown', (e) => {
+    if (!$('sessionView').classList.contains('on')) return;
+    if (typing()) { if (e.key === 'Escape') { closeType(); surface.focus(); } return; }
+    if (e.ctrlKey && e.altKey && e.shiftKey && LOCAL[e.code]) { e.preventDefault(); LOCAL[e.code](); return; }
+    e.preventDefault();
+    lastInput = performance.now();
+    if (!canControl()) return;
+    down.add(e.code);
+    ctl(['k', e.code, 1]);
+  }, true);
+  window.addEventListener('keyup', (e) => {
+    if (!$('sessionView').classList.contains('on') || typing()) return;
+    e.preventDefault();
+    if (!down.has(e.code)) return;
+    down.delete(e.code);
+    ctl(['k', e.code, 0]);
+  }, true);
+  function releaseAll(send) {
+    if (send !== false) {
+      for (const c of down) { if (c[0] === 'b' && /^b\d$/.test(c)) ctl(['b', Number(c.slice(1)), 0]); else ctl(['k', c, 0]); }
+      ctl(['rel-all']);
+    }
+    down.clear();
+  }
+  window.addEventListener('blur', () => releaseAll());
+  document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
+
+  function sendCombo(spec) {
+    if (!canControl()) return toast('View only');
+    const keys = spec.split('+');
+    keys.forEach((k) => ctl(['k', k, 1]));
+    keys.slice().reverse().forEach((k) => ctl(['k', k, 0]));
+    closeMenus(); surface.focus();
+  }
+
+  // ------------------------------------------------------------ toolbar
+  let barPinned = false, barTimer = null;
+  function showBar(on, autoHideMs) {
+    $('bar').classList.toggle('show', on || barPinned);
+    clearTimeout(barTimer);
+    if (on && autoHideMs && !barPinned) barTimer = setTimeout(() => { if (!barHover) showBar(false); }, autoHideMs);
+  }
+  let barHover = false;
+  $('hotzone').addEventListener('mouseenter', () => showBar(true));
+  $('bar').addEventListener('mouseenter', () => { barHover = true; showBar(true); });
+  $('bar').addEventListener('mouseleave', () => { barHover = false; if (!menuOpen()) showBar(true, 700); });
+  function menuOpen() { return !$('keysMenu').classList.contains('hidden') || !$('clipMenu').classList.contains('hidden'); }
+  function closeMenus() { $('keysMenu').classList.add('hidden'); $('clipMenu').classList.add('hidden'); }
+  function toggleMenu(id, btn) {
+    const m = $(id), open = m.classList.contains('hidden');
+    closeMenus();
+    if (open) { const r = btn.getBoundingClientRect(); m.style.left = Math.max(8, r.left) + 'px'; m.classList.remove('hidden'); }
+  }
+  $('keysBtn').onclick = () => toggleMenu('keysMenu', $('keysBtn'));
+  $('clipBtn').onclick = () => toggleMenu('clipMenu', $('clipBtn'));
+  for (let i = 1; i <= 12; i++) { const b = document.createElement('button'); b.textContent = 'F' + i; b.dataset.combo = 'F' + i; $('fkeys').appendChild(b); }
+  for (const b of document.querySelectorAll('#keysMenu [data-combo]')) b.onclick = () => sendCombo(b.dataset.combo);
+  $('relKeys').onclick = () => { releaseAll(); closeMenus(); toast('All keys released'); };
+  $('barQuality').onchange = () => { prefs.quality = $('barQuality').value; savePrefs(); ctl(['br', Number(prefs.quality)]); surface.focus(); };
+  $('barDisplay').onchange = () => { ctl(['disp', $('barDisplay').value]); surface.focus(); };
+  $('fsBtn').onclick = toggleFullscreen;
+  $('statsBtn').onclick = toggleStats;
+  $('muteBtn').onclick = toggleMute;
+  $('curBtn').onclick = () => { toggleLocalCursor(); surface.focus(); };
+  $('pinBtn').onclick = () => { barPinned = !barPinned; $('pinBtn').style.color = barPinned ? 'var(--pink)' : ''; showBar(true, 1500); };
+  $('discBtn').onclick = disconnect;
+  function toggleMute() { muted = !muted; $('v').muted = muted; $('muteBtn').textContent = muted ? '🔇' : '🔊'; toast(muted ? 'Sound off' : 'Sound on'); }
+
+  $('clipToPc').onclick = async () => {
+    closeMenus();
+    if (!canControl()) return toast('View only');
+    try { const t = await navigator.clipboard.readText(); ctl(['clip-set', t]); toast('Sent. Press Ctrl+V on the PC to paste.'); }
+    catch (e) { toast("Clipboard access was blocked. Use 'Type text' instead."); openType(); }
+  };
+  $('clipFromPc').onclick = () => { closeMenus(); ctl(['clip-get']); };
+  $('typeText').onclick = () => { closeMenus(); openType(); };
+  function openType() { if (!canControl()) return toast('View only'); releaseAll(); $('modal').classList.add('on'); $('typeArea').focus(); }
+  function closeType() { $('modal').classList.remove('on'); }
+  $('typeCancel').onclick = () => { closeType(); surface.focus(); };
+  $('typeSend').onclick = sendType;
+  $('typeArea').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); sendType(); } });
+  function sendType() { const t = $('typeArea').value; if (t) ctl(['txt', t]); $('typeArea').value = ''; closeType(); surface.focus(); toast('Typed on the PC'); }
+
+  // ------------------------------------------------------------ fullscreen
+  function goFullscreen() {
+    const el = document.documentElement;
+    if (document.fullscreenElement || !el.requestFullscreen) return;
+    el.requestFullscreen({ navigationUI: 'hide' }).then(() => {
+      if (navigator.keyboard && navigator.keyboard.lock) navigator.keyboard.lock().catch(() => {}); // Alt+Tab, Search key… go to the PC
+    }).catch(() => {});
+  }
+  function exitFullscreen() { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); }
+  function toggleFullscreen() { if (document.fullscreenElement) exitFullscreen(); else goFullscreen(); }
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock();
+    if (live() && document.fullscreenElement) toast('Full screen. Hold Esc to leave.', 2200);
+  });
+
+  // ------------------------------------------------------------ stats
+  let statsOn = false, statsTimer = null, prevBytes = 0, prevT = 0;
+  function toggleStats() { statsOn = !statsOn; $('hud').style.display = statsOn ? 'block' : 'none'; }
+  function stopStats() { clearInterval(statsTimer); statsTimer = null; }
+  function startStats(L) {
+    stopStats(); prevBytes = 0; prevT = 0;
+    statsTimer = setInterval(async () => {
+      if (!L.pc || L.closed) return;
+      let st;
+      try { st = await L.pc.getStats(); } catch (e) { return; }
+      let inb = null, pair = null, codec = null;
+      st.forEach((r) => {
+        if (r.type === 'inbound-rtp' && r.kind === 'video') inb = r;
+        if (r.type === 'transport' && r.selectedCandidatePairId) pair = st.get(r.selectedCandidatePairId);
+      });
+      if (!pair) st.forEach((r) => { if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') pair = r; });
+      if (inb && inb.codecId) codec = st.get(inb.codecId);
+      const rtt = pair && pair.currentRoundTripTime != null ? Math.round(pair.currentRoundTripTime * 1000) : null;
+      let relay = false, proto = '';
+      if (pair) {
+        const lc = st.get(pair.localCandidateId) || {}, rc = st.get(pair.remoteCandidateId) || {};
+        relay = lc.candidateType === 'relay' || rc.candidateType === 'relay';
+        proto = (lc.relayProtocol || lc.protocol || '').toUpperCase();
+      }
+      let kbps = 0;
+      if (inb) {
+        const now = inb.timestamp;
+        if (prevT) kbps = Math.round(((inb.bytesReceived - prevBytes) * 8) / (now - prevT));
+        prevBytes = inb.bytesReceived; prevT = now;
+      }
+      const jb = inb && inb.jitterBufferEmittedCount ? Math.round((inb.jitterBufferDelay / inb.jitterBufferEmittedCount) * 1000) : null;
+      const loss = inb && inb.packetsReceived ? ((inb.packetsLost || 0) / (inb.packetsReceived + (inb.packetsLost || 0)) * 100).toFixed(1) : '0';
+      $('routeDot').classList.toggle('relay', relay);
+      $('barRtt').textContent = rtt != null ? `${rtt} ms · ${relay ? 'relay' : 'direct'}` : '';
+      if (statsOn && inb) {
+        $('hud').textContent = [
+          `route    ${relay ? 'RELAY (Cloudflare)' : 'DIRECT'} ${proto}`,
+          `rtt      ${rtt != null ? rtt + ' ms' : '-'}   app ${L.appRtt != null ? L.appRtt + ' ms' : '-'}`,
+          `video    ${inb.frameWidth || '-'}×${inb.frameHeight || '-'} @ ${Math.round(inb.framesPerSecond || 0)} fps`,
+          `bitrate  ${(kbps / 1000).toFixed(1)} Mbps   loss ${loss}%`,
+          `codec    ${codec ? codec.mimeType.replace('video/', '') : '-'}  ${inb.decoderImplementation || ''}${inb.powerEfficientDecoder ? ' (hw)' : ''}`,
+          `buffer   ${jb != null ? jb + ' ms' : '-'}`,
+        ].join('\n');
+      }
+    }, 1000);
+  }
+
+  // ------------------------------------------------------------ boot
+  window.addEventListener('beforeunload', () => { if (live()) { ctl(['bye']); } });
+  (function boot() {
+    if (location.hash.includes('pair=')) {
+      const p = parsePairing(location.hash);
+      history.replaceState(null, '', location.pathname + location.search); // keep the code off the screen / history
+      if (p) { savePair(p); }
+    }
+    showLogin();
+  })();
+  window.__rl = { getPair, live: () => live(), link: () => link }; // debugging aid
+})();
+</script>
+</body>
+</html>
