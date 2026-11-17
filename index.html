@@ -7,6 +7,8 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
 <meta name="description" content="RemoteLink — control your Windows PC from a Chromebook browser, from anywhere, with low latency. Nothing to install on the Chromebook.">
 <title>RemoteLink — your PC, on your Chromebook</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%2300f0ff%22/%3E%3Cstop offset=%221%22 stop-color=%22%23ff2bd6%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x=%223%22 y=%223%22 width=%2258%22 height=%2258%22 rx=%2215%22 fill=%22%230b0e18%22 stroke=%22url(%23g)%22 stroke-width=%225%22/%3E%3Crect x=%2213.5%22 y=%2215.5%22 width=%2237%22 height=%2225%22 rx=%224%22 fill=%22none%22 stroke=%22%2300f0ff%22 stroke-width=%225%22/%3E%3Cpath d=%22M32 41v7M21 50h22%22 stroke=%22%2300f0ff%22 stroke-width=%225%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M27 21.5l13 7-6.2 1.6-2.6 5.9z%22 fill=%22%23ff2bd6%22 stroke=%22%23ff2bd6%22 stroke-width=%221.5%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+<meta name="theme-color" content="#05060b">
 <script>
   // Old pairing links pointed here (…/#pair=…): send them straight to the app.
   function rlPairRedirect() { if (location.hash.indexOf('pair=') >= 0) location.replace('app.html' + location.hash); }
@@ -186,10 +188,10 @@
     <details><summary>Black screen</summary><p>The PC is on the lock screen or showing an administrator (UAC) prompt. Windows doesn't allow either to be controlled remotely.</p></details>
     <details><summary>It feels laggy</summary><p>Open stats with <kbd>Ctrl+Alt+Shift+S</kbd>. “Relay” adds a little delay; lower the bandwidth to Balanced or use 30 fps on weak Wi-Fi. A network cable on the PC helps.</p></details>
     <details><summary>Keyboard shortcuts in the app</summary><p>Hold <kbd>Ctrl+Alt+Shift</kbd> and press <kbd>F</kbd> full screen · <kbd>G</kbd> game mode · <kbd>S</kbd> stats · <kbd>H</kbd> toolbar · <kbd>T</kbd> type text · <kbd>M</kbd> sound · <kbd>C</kbd> second cursor · <kbd>Q</kbd> disconnect. The Search key works as the Windows key.</p></details>
-    <details><summary>Is this page up to date?</summary><p>This page is <b>v1.4.2</b>. The version is also shown at the bottom of the app's login screen. If you just uploaded a new version, wait 1–2 minutes and reload with <kbd>Ctrl+Shift+R</kbd>.</p></details>
+    <details><summary>Is this page up to date?</summary><p>This page is <b>v1.4.3</b>. The version is also shown at the bottom of the app's login screen. If you just uploaded a new version, wait 1–2 minutes and reload with <kbd>Ctrl+Shift+R</kbd>.</p></details>
   </section>
 
-  <footer><span>RemoteLink v1.4.2 · 17 Nov 2026</span><span><a href="app.html">Open the app</a> · <a href="RemoteLink.zip" download>PC app download</a></span></footer>
+  <footer><span>RemoteLink v1.4.3 · 17 Nov 2026</span><span><a href="app.html">Open the app</a> · <a href="RemoteLink.zip" download>PC app download</a></span></footer>
 </div>
 <script>
   (function () {
