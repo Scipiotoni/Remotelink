@@ -86,6 +86,23 @@
   #modal.on { display: flex; }
   #modal textarea { height: 160px; resize: vertical; font-size: 14px; }
   .hidden { display: none !important; }
+
+  /* troubleshoot */
+  #diag { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.72); }
+  #diag.on { display: flex; }
+  #diag .card { width: min(720px, 95vw); max-height: 92vh; overflow: auto; padding: 20px 22px; }
+  #diag h2 { margin: 0; font: 800 18px system-ui; letter-spacing: 2px; color: var(--cyan); text-shadow: 0 0 12px #00f0ff66; }
+  #diag pre { margin: 0; background: #04050a; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; max-height: 210px; overflow: auto;
+              font: 12px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; color: #c9d1f5; white-space: pre-wrap; word-break: break-word; }
+  #diag .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  #diag .btns button { flex: 1 1 150px; }
+  .ck { display: grid; grid-template-columns: 18px 170px 1fr; gap: 8px; align-items: start; padding: 6px 0; border-bottom: 1px solid #1b213488; font-size: 13.5px; }
+  .ck:last-child { border-bottom: 0; }
+  .ck .d { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: #3a4160; }
+  .ck.ok .d { background: var(--lime); box-shadow: 0 0 8px var(--lime); } .ck.bad .d { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .ck.warn .d { background: var(--amber); box-shadow: 0 0 8px var(--amber); } .ck.run .d { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: blink .7s infinite alternate; }
+  @keyframes blink { to { opacity: .25; } }
+  .ck b { font-weight: 600; } .ck span { color: var(--dim); white-space: pre-line; }
 </style>
 </head>
 <body>
@@ -103,6 +120,7 @@
     </details>
     <button id="pairBtn" class="go">Pair</button>
     <div id="pairStatus" class="status"></div>
+    <button id="diagOpen2" class="link">🩺 Troubleshoot</button>
     <p class="sub" style="margin:18px 0 0">New here? <a href="RemoteLink.zip" download>Download the PC app (Windows)</a>, run <b>install.bat</b> on <b>your own</b> PC, set your password, then type the pairing code it shows. Everyone gets their own private connection. <a href="./">What is RemoteLink?</a></p>
   </div>
 </section>
@@ -120,6 +138,8 @@
       <label class="check"><input id="remember" type="checkbox" checked> Remember this Chromebook (next time only the password)</label>
     </div>
     <div id="trustedNote" class="trusted hidden">✔ Trusted Chromebook: only your password is needed. <button id="useCode" class="link">Use the code instead</button></div>
+    <div id="autoNote" class="trusted hidden">⚡ Auto-connect is on: no password needed. <button id="autoOff" class="link">Turn off</button></div>
+    <label class="check" id="autoBox"><input id="autoConnect" type="checkbox"> Connect automatically from this Chromebook (no password next time)</label>
     <label>Mode</label>
     <div class="seg" id="modeSeg"><button data-mode="desktop" class="on">Desktop · sharp text</button><button data-mode="game">Game · smooth</button></div>
     <label class="check"><input id="viewOnly" type="checkbox"> View only (no mouse or keyboard)</label>
@@ -137,13 +157,14 @@
     <button id="connectBtn" class="go">Connect</button>
     <button id="resumeBtn" class="hidden" style="width:100%;margin-top:10px">Reconnect without a new code</button>
     <div id="loginStatus" class="status"></div>
+    <button id="autoStop" class="link hidden">Stop auto-connect</button>
     <details><summary>Keyboard shortcuts during a session</summary>
       <p class="sub" style="margin:8px 0 0">Hold <span class="kbd">Ctrl+Alt+Shift</span> and press:<br>
       <span class="kbd">F</span> full screen · <span class="kbd">G</span> game/desktop · <span class="kbd">S</span> stats · <span class="kbd">H</span> pin toolbar ·
-      <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">C</span> second cursor · <span class="kbd">Q</span> disconnect.<br>
+      <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">C</span> second cursor · <span class="kbd">D</span> troubleshoot · <span class="kbd">Q</span> disconnect.<br>
       Move the mouse to the top edge for the toolbar. In full screen, hold <span class="kbd">Esc</span> to leave. The Search key acts as the Windows key.</p>
     </details>
-    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><a class="ver" href="./" title="About RemoteLink">v1.3 · about</a></div>
+    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.4 · about</a></div>
   </div>
 </section>
 
@@ -165,6 +186,7 @@
     <button id="statsBtn" title="Stats (Ctrl+Alt+Shift+S)">Stats</button>
     <button id="fsBtn" title="Full screen (Ctrl+Alt+Shift+F)">⛶</button>
     <button id="pinBtn" title="Keep this bar open (Ctrl+Alt+Shift+H)">📌</button>
+    <button id="diagBtn" title="Troubleshoot (Ctrl+Alt+Shift+D)">🩺</button>
     <button id="discBtn" class="red" title="Disconnect (Ctrl+Alt+Shift+Q)">Disconnect</button>
   </div>
   <div id="keysMenu" class="menu hidden">
@@ -195,6 +217,24 @@
     <div class="row" style="margin-top:12px"><button id="typeCancel">Cancel</button><button id="typeSend" class="go" style="margin:0">Type it  (Ctrl+Enter)</button></div>
   </div></div>
 </section>
+
+<!-- ============ TROUBLESHOOT ============ -->
+<div id="diag" role="dialog" aria-label="Troubleshoot">
+  <div class="card">
+    <div class="row" style="justify-content:space-between"><h2>TROUBLESHOOT</h2><button id="diagClose" class="link" style="flex:0 0 auto">✕ Close (Esc)</button></div>
+    <p class="sub" style="margin:6px 0 10px">Checks every step between this Chromebook and your PC. Nothing here needs your password.</p>
+    <div id="diagChecks"></div>
+    <div class="btns">
+      <button id="diagRun">▶ Run connection test</button>
+      <button id="diagPcLog" title="Needs a logged-in connection">Get PC report</button>
+      <button id="diagCopy">Copy report</button>
+    </div>
+    <label>What happened on this Chromebook</label>
+    <pre id="diagLog"></pre>
+    <label>PC report (settings + last lines of its activity log)</label>
+    <pre id="diagPc">Log in (even if the video doesn't start), then press “Get PC report”. It's also fetched automatically when the video fails to start.</pre>
+  </div>
+</div>
 
 <script>/* RemoteLink shared crypto + protocol helpers.
  * Runs unchanged in the browser (Chromebook client) and in Node/Electron (PC host).
@@ -601,13 +641,19 @@
     setMode(prefs.mode);
     $('connectBtn').disabled = false;
     const trusted = !!pair.dev;
+    const auto = autoReady();
     $('codeBox').classList.toggle('hidden', trusted);
-    $('trustedNote').classList.toggle('hidden', !trusted);
+    $('trustedNote').classList.toggle('hidden', !trusted || auto);
+    $('autoNote').classList.toggle('hidden', !auto);
+    $('autoBox').classList.toggle('hidden', auto);
+    for (const el of [$('pw'), document.querySelector('label[for=pw]')]) el.classList.toggle('hidden', auto);
     const canResume = resume && resume.droppedAt && Date.now() - resume.droppedAt < 9.5 * 60e3;
     $('resumeBtn').classList.toggle('hidden', !canResume);
+    $('autoStop').classList.toggle('hidden', !autoActive);
     view('loginView');
     status('loginStatus', msg || '', kind);
-    (($('pw').value && !trusted) ? $('code') : $('pw')).focus();
+    if (auto) $('connectBtn').focus();
+    else (($('pw').value && !trusted) ? $('code') : $('pw')).focus();
   }
   for (const id of ['quality', 'fps', 'codec', 'audio']) $(id).onchange = () => { prefs[id] = $(id).value; savePrefs(); };
   $('fullRes').onchange = () => { prefs.fullRes = $('fullRes').checked; savePrefs(); };
@@ -633,16 +679,53 @@
 
   function startLogin() {
     if (link && !link.closed) return;
+    stopAuto();
     const pr = getPair();
     const trusted = !!(pr && pr.dev);
+    if (autoReady()) { // auto-connect Chromebook: one click, no password
+      if (prefs.fs !== false) goFullscreen();
+      return connect({ mode: 'device', dk: pr.dev.ak, viewOnly: $('viewOnly').checked });
+    }
     const pw = $('pw').value, code = $('code').value.replace(/\D/g, '');
     if (!pw) { status('loginStatus', 'Type your password.', 'err'); $('pw').focus(); return; }
     if (!trusted && code.length !== 6) { status('loginStatus', 'Type the 6-digit code from your authenticator app.', 'err'); $('code').focus(); return; }
     $('pw').value = ''; $('code').value = '';
     if (prefs.fs !== false) goFullscreen(); // uses this click/keypress as the required user gesture
-    if (trusted) connect({ mode: 'device', password: pw, viewOnly: $('viewOnly').checked });
-    else connect({ mode: 'otp', password: pw, code, viewOnly: $('viewOnly').checked, remember: $('remember').checked });
+    const wantAuto = $('autoConnect').checked;
+    if (trusted) connect({ mode: 'device', password: pw, viewOnly: $('viewOnly').checked, auto: wantAuto });
+    else connect({ mode: 'otp', password: pw, code, viewOnly: $('viewOnly').checked, remember: $('remember').checked || wantAuto, auto: wantAuto });
   }
+
+  // ------------------------------------------------------------ auto-connect (trusted Chromebooks)
+  // The Chromebook keeps the trusted-device secret (derived from the device key + password, never the
+  // password itself), so it can log in by itself. The PC revokes it with "Forget trusted Chromebooks";
+  // changing the PC password also invalidates it.
+  let autoActive = false, autoTimer = null, autoTries = 0;
+  function autoReady() { const p = getPair(); return !!(p && p.dev && typeof p.dev.ak === 'string' && p.dev.ak); }
+  function clearAuto() { const p = getPair(); if (p && p.dev && p.dev.ak) { delete p.dev.ak; savePair(p); D('auto-connect key removed from this Chromebook'); } }
+  function stopAuto() { autoActive = false; autoTries = 0; clearTimeout(autoTimer); autoTimer = null; $('autoStop').classList.add('hidden'); }
+  function startAuto(why) {
+    clearTimeout(autoTimer); autoTimer = null;
+    if (!autoReady() || (link && !link.closed)) return false;
+    autoActive = true; autoTries++;
+    $('autoStop').classList.remove('hidden');
+    D(`auto-connect (${why}, try ${autoTries})`);
+    connect({ mode: 'device', dk: getPair().dev.ak, viewOnly: $('viewOnly').checked, auto: true });
+    return true;
+  }
+  function autoRetryLater(text) {
+    // PC off / asleep / offline: keep trying quietly while this page is open.
+    const wait = autoTries < 3 ? 10 : autoTries < 10 ? 20 : 60;
+    showLogin(`${text}\nAuto-connect: trying again in ${wait} s (attempt ${autoTries}).`, 'err');
+    $('autoStop').classList.remove('hidden');
+    autoTimer = setTimeout(() => startAuto('retry'), wait * 1000);
+  }
+  $('autoStop').onclick = () => { stopAuto(); showLogin('Auto-connect stopped. Press Connect when you want to connect.'); };
+  $('autoOff').onclick = () => {
+    if (!confirm('Turn off auto-connect on this Chromebook? You will need your password again.')) return;
+    stopAuto(); clearAuto(); showLogin('Auto-connect is off on this Chromebook.');
+  };
+  $('autoConnect').onchange = () => { if ($('autoConnect').checked) $('remember').checked = true; };
 
   // ------------------------------------------------------------ connection
   let link = null;      // current connection attempt / session
@@ -667,45 +750,61 @@
       display: o.display || null,
     };
     link = L;
+    L.auto = !!o.dk;
+    L.localTypes = new Set(); L.remoteTypes = new Set();
+    lastLink = L;
     $('connectBtn').disabled = true;
     const say = (t) => (o.mode === 'resume' ? overlay(t) : status('loginStatus', t, '', true));
-    say('Contacting your PC…');
+    D(`--- connect (${o.mode === 'device' && o.dk ? 'auto-connect' : o.mode}${L.viewOnly ? ', view only' : ''})`);
+    say(o.dk ? 'Connecting automatically…' : 'Contacting your PC…');
     let signalTrouble = 0;
     L.rt = new RT({
       url: pair.url, key: pair.key, topic: 'rl:' + pair.room,
-      onMessage: (m) => onSignal(L, m, o, say).catch((e) => fail(L, 'Error: ' + (e && e.message))),
-      onStatus: (s) => { if (s === 'closed' && ++signalTrouble === 3 && !L.hn) say("Can't reach the signaling server. The network may be blocking supabase.co…"); },
+      onMessage: (m) => onSignal(L, m, o, say).catch((e) => fail(L, 'Error: ' + (e && e.message), true)),
+      onStatus: (s) => {
+        if (L.closed) return;
+        if (s === 'joined' && !L.sigJoined) { L.sigJoined = true; D('signaling server: connected'); }
+        if (s === 'closed' || s === 'error') D('signaling server: ' + s);
+        if (s === 'closed' && ++signalTrouble === 3 && !L.hn) say("Can't reach the signaling server. The network may be blocking supabase.co…");
+      },
     });
     L.rt.connect();
     L.rt.send({ from: 'c', t: 'hello', sid: L.sid, cn: L.cn });
     L.timers.push(setTimeout(() => {
-      if (!L.hn && !L.closed) fail(L, "Your PC didn't answer.\nIs it on, awake, online, with RemoteLink running in the tray?");
+      if (!L.hn && !L.closed) fail(L, L.sigJoined ? "Your PC didn't answer.\nIs it on, awake, online, with RemoteLink running in the tray?"
+        : "Can't reach the signaling server (supabase.co). This network may block it.", true);
     }, 15000));
   }
 
   async function onSignal(L, m, o, say) {
     if (L !== link || L.closed || !m || m.from !== 'h' || m.sid !== L.sid) return;
-    if (m.t === 'paused') return fail(L, 'Remote access is paused on the PC. Resume it from the RemoteLink tray icon.');
-    if (m.t === 'locked') return fail(L, `Too many wrong attempts. Logins are locked for ${Math.ceil(m.retryIn / 60)} more minute(s).`);
+    if (m.t === 'paused') { D('PC: remote access is paused'); stopAuto(); return fail(L, 'Remote access is paused on the PC. Resume it from the RemoteLink tray icon (or tick "Always active" there).'); }
+    if (m.t === 'locked') { D(`PC: logins locked for ${m.retryIn} s`); stopAuto(); return fail(L, `Too many wrong attempts. Logins are locked for ${Math.ceil(m.retryIn / 60)} more minute(s).`); }
     if (m.t === 'challenge') {
       if (L.hn) return;
       L.hn = m.hn;
+      D(`PC answered: "${m.name || '?'}"`);
       if (m.name && m.name !== L.pair.name) { L.pair.name = m.name; savePair(L.pair); $('pcName').textContent = m.name; }
       let proof, raw;
       if (o.mode === 'resume') {
         proof = await P.resumeProof(resume.token, L.cn, L.hn, L.viewOnly);
         raw = await P.resumeKey(resume.token, L.cn, L.hn);
       } else {
-        if (!(m.iter >= 100000 && m.iter <= 3000000)) return fail(L, 'The PC sent strange login parameters. Refusing.');
-        say('Checking password…');
-        const K = await P.pbkdf2(o.password, P.unb64(m.salt), m.iter);
+        let K = null;
+        if (!(o.mode === 'device' && o.dk)) {
+          if (!(m.iter >= 100000 && m.iter <= 3000000)) return fail(L, 'The PC sent strange login parameters. Refusing.');
+          say('Checking password…');
+          K = await P.pbkdf2(o.password, P.unb64(m.salt), m.iter);
+        }
         if (o.mode === 'device') {
-          const dk = await P.deviceSecret(P.unb64(L.pair.dev.k), K);
+          const dk = o.dk ? P.unb64(o.dk) : await P.deviceSecret(P.unb64(L.pair.dev.k), K);
+          if (o.auto && !o.dk) L.saveAuto = P.b64(dk); // stored only once the PC accepts the login
           proof = await P.deviceProof(dk, L.cn, L.hn, L.viewOnly);
           raw = await P.deviceSessionKey(dk, L.cn, L.hn);
         } else {
           proof = await P.authProof(K, L.cn, L.hn, o.code, L.viewOnly);
           raw = await P.sessionKey(K, L.cn, L.hn, o.code);
+          if (o.auto) L.autoK = K; // to derive the device secret when the PC hands out the device key
         }
         o.password = null;
       }
@@ -718,11 +817,15 @@
         devName: o.mode === 'otp' && o.remember ? deviceLabel() : undefined,
       });
       say('Logging in…');
-      L.timers.push(setTimeout(() => { if (!L.welcomed && !L.closed) fail(L, 'The PC stopped answering during login.'); }, 15000));
+      L.timers.push(setTimeout(() => { if (!L.welcomed && !L.closed) fail(L, 'The PC stopped answering during login.', true); }, 15000));
       return;
     }
     if (m.t === 'denied') {
+      D(`PC refused the login (${o.mode === 'device' && o.dk ? 'auto-connect' : o.mode})`);
       if (o.mode === 'resume') { resume = null; return fail(L, 'Your session expired. Log in again.'); }
+      // Never retry a refused auto-connect key: every refusal counts toward the PC's lockout.
+      if (o.mode === 'device') { stopAuto(); if (o.dk) clearAuto(); }
+      if (o.dk && !m.unknownDevice) return fail(L, 'The PC no longer accepts this Chromebook\'s auto-connect key (was the password changed?). Log in with your password once.');
       const left = `${m.left} ${m.left === 1 ? 'try' : 'tries'} left before logins are locked.`;
       if (o.mode === 'device' && m.unknownDevice) { forgetDevice(); return fail(L, "This Chromebook isn't trusted any more (it was removed on the PC).\nEnter the authenticator code once. " + left); }
       return fail(L, (o.mode === 'device' ? 'Wrong password. ' : 'Wrong password or code. ') + left);
@@ -730,16 +833,30 @@
     if (m.t === 'sec' && L.key) {
       let msg;
       try { msg = await P.open(L.key, m, `${L.sid}|h2c`); } catch (e) { return; } // not for us / forged
-      if (typeof msg.n !== 'number' || msg.n <= L.recvN) return;
-      L.recvN = msg.n;
+      if (!fresh(L, msg.n)) return; // replay
       await onSecure(L, msg, say);
     }
   }
 
-  async function sendSecure(L, obj) {
-    if (!L.key || L.closed) return;
-    const env = await P.seal(L.key, Object.assign({ n: ++L.sendN }, obj), `${L.sid}|c2h`);
-    L.rt.send({ from: 'c', t: 'sec', sid: L.sid, iv: env.iv, ct: env.ct });
+  // Seal + send strictly in order, so a small ICE message can never overtake the big answer before it.
+  function sendSecure(L, obj) {
+    if (!L.key || L.closed) return Promise.resolve();
+    const n = ++L.sendN;
+    const job = (L.sendChain || Promise.resolve()).then(async () => {
+      const env = await P.seal(L.key, Object.assign({ n }, obj), `${L.sid}|c2h`);
+      L.rt.send({ from: 'c', t: 'sec', sid: L.sid, iv: env.iv, ct: env.ct });
+    });
+    L.sendChain = job.catch(() => {});
+    return job;
+  }
+  // Replay check that tolerates small reordering (decryption is async, so #3 can finish before #2).
+  function fresh(L, n) {
+    if (typeof n !== 'number' || !Number.isInteger(n) || n < 1) return false;
+    if (!L.seen) L.seen = new Set();
+    if (n <= L.recvN - 64 || L.seen.has(n)) return false;
+    L.seen.add(n);
+    if (n > L.recvN) { L.recvN = n; for (const x of L.seen) if (x <= n - 64) L.seen.delete(x); }
+    return true;
   }
 
   async function onSecure(L, msg, say) {
@@ -748,20 +865,45 @@
       L.viewOnly = !!msg.viewOnly;
       L.ice = msg.iceServers || [];
       L.name = msg.name || L.pair.name;
-      resume = msg.resume ? { tid: msg.resume.tid, token: P.unb64(msg.resume.token), viewOnly: L.viewOnly, droppedAt: 0 } : null;
+      resume = msg.resume ? { tid: msg.resume.tid, token: P.unb64(msg.resume.token), viewOnly: L.viewOnly, droppedAt: 0, afterBye: !!msg.resumeAfterBye } : null;
+      D(`logged in${L.viewOnly ? ' (view only)' : ''}; ${L.ice.length} ICE server entr${L.ice.length === 1 ? 'y' : 'ies'} from the PC${L.ice.some((s) => /turns?:/.test([].concat(s.urls).join(' '))) ? ' incl. TURN relay' : ' (no TURN relay)'}`);
       if (msg.device && msg.device.id && msg.device.key) {
         const pr = getPair();
-        if (pr) { pr.dev = { id: String(msg.device.id), k: String(msg.device.key) }; savePair(pr); L.pair.dev = pr.dev; }
-        toast('This Chromebook is now trusted: next time only the password.', 4000);
+        if (pr) {
+          pr.dev = { id: String(msg.device.id), k: String(msg.device.key) };
+          if (L.autoK) pr.dev.ak = P.b64(await P.deviceSecret(P.unb64(pr.dev.k), L.autoK));
+          savePair(pr); L.pair.dev = pr.dev;
+        }
+        toast(pr && pr.dev.ak ? 'This Chromebook is now trusted and will connect automatically.' : 'This Chromebook is now trusted: next time only the password.', 4000);
+      } else if (L.saveAuto) {
+        const pr = getPair();
+        if (pr && pr.dev) { pr.dev.ak = L.saveAuto; savePair(pr); L.pair.dev = pr.dev; toast('Auto-connect is on for this Chromebook.', 3500); }
       }
+      L.autoK = null; L.saveAuto = null;
       say('Starting the stream…');
       await sendSecure(L, { t: 'ready', prefs: currentPrefs() });
-      L.timers.push(setTimeout(() => { if (!L.live && !L.closed) fail(L, "The stream didn't start. The network may be blocking video connections (set up the Cloudflare relay on the PC)."); }, 25000));
+      D('asked the PC to start the video');
+      L.timers.push(setTimeout(() => {
+        if (L.live || L.closed || L !== link) return;
+        D(`video did not start within 12 s: ${L.pc ? `connection ${L.pc.connectionState}, ICE ${L.pc.iceConnectionState}` : 'no offer from the PC'}; ` +
+          `candidates here: ${[...L.localTypes].join('/') || 'none'}, from PC: ${[...L.remoteTypes].join('/') || 'none'}`);
+        sendSecure(L, { t: 'diag' }); // ask the PC what it saw, for the Troubleshoot panel
+        // Stream didn't come up: retry by itself with the reconnect token (no password needed), up to 3 times.
+        setTimeout(() => {
+          if (L.live || L.closed || L !== link) return;
+          if (resume && reconnects < 3) { const d = L.display; closeLink(L); setTimeout(() => reconnect(d), 300); return; }
+          fail(L, "The stream didn't start. The network may be blocking video connections (set up the Cloudflare relay on the PC).\nOpen 🩺 Troubleshoot for details.", true);
+        }, 1500);
+      }, 12000));
     } else if (msg.t === 'offer') {
+      D('video offer received from the PC');
       await setupPeer(L, msg.sdp);
     } else if (msg.t === 'ice' && msg.c) {
+      const ty = / typ (\w+)/.exec(msg.c.candidate || ''); if (ty) L.remoteTypes.add(ty[1]);
       if (L.pc && L.pc.remoteDescription) L.pc.addIceCandidate(msg.c).catch(() => {});
       else L.pendingIce.push(msg.c);
+    } else if (msg.t === 'diag') {
+      showPcReport(msg);
     } else if (msg.t === 'bye') {
       ended(L, msg.reason);
     }
@@ -789,10 +931,11 @@
         ch.onclose = () => { if (L === link && L.live && !L.closed) lost(L); };
       }
     };
-    pc.onicecandidate = (e) => { if (e.candidate) sendSecure(L, { t: 'ice', c: e.candidate.toJSON() }); };
+    pc.onicecandidate = (e) => { if (e.candidate) { if (e.candidate.type) L.localTypes.add(e.candidate.type); sendSecure(L, { t: 'ice', c: e.candidate.toJSON() }); } };
     pc.onconnectionstatechange = () => {
       if (L !== link || L.closed) return;
       const st = pc.connectionState;
+      D(`video connection: ${st}`);
       clearTimeout(L.dropTimer);
       if (st === 'connected') overlay(null);
       else if (st === 'disconnected' && L.live) {
@@ -805,12 +948,20 @@
     const ans = await pc.createAnswer();
     await pc.setLocalDescription(ans);
     await sendSecure(L, { t: 'answer', sdp: pc.localDescription.sdp });
+    D('video answer sent to the PC');
   }
 
   function goLive(L) {
     if (L !== link || L.closed) return;
     L.live = true;
     reconnects = 0;
+    D('stream is live ✔');
+    if (autoActive) stopAuto();
+    if (L.auto && prefs.fs !== false && !document.fullscreenElement) {
+      // Auto-connect happened without a click, and browsers only allow full screen after one.
+      surface.addEventListener('pointerdown', () => { if (live()) goFullscreen(); }, { once: true });
+      setTimeout(() => toast('Connected automatically. Click the screen for full screen.', 3500), 400);
+    }
     L.timers.forEach(clearTimeout); L.timers = [];
     $('connectBtn').disabled = false;
     status('loginStatus', '');
@@ -879,17 +1030,26 @@
     $('v').srcObject = null;
   }
 
-  function fail(L, text) {
+  // retryable = the PC/network may simply not be reachable yet (auto-connect keeps trying);
+  // not retryable = the PC said no (paused, locked, refused) → auto-connect stops.
+  function fail(L, text, retryable) {
     if (L !== link) return;
     const wasResume = L.mode === 'resume';
+    L.failText = String(text).split('\n')[0];
+    D('failed: ' + L.failText);
     closeLink(L);
     overlay(null);
     if (wasResume && resume && reconnects < 3) return setTimeout(() => reconnect(), 1500);
+    if (wasResume && autoReady() && !autoActive) { showLogin('Reconnecting automatically…'); return startAuto('reconnect token no longer valid'); }
+    if (autoActive && retryable) return autoRetryLater(text);
+    if (autoActive) stopAuto();
     showLogin(text + (resume && resume.droppedAt ? '\nYou can still reconnect without a new code for a few minutes.' : ''), 'err');
   }
 
   function ended(L, reason) {
-    if (L !== link || L.closed) return;
+    if (L !== link || L.closed || L.byeSent) return; // we hung up ourselves: disconnect() handles it
+    D(`PC ended the session (${reason || '?'})`);
+    stopAuto(); // never auto-reconnect after the PC hung up (panic key, other device, idle…)
     resume = null;
     closeLink(L);
     overlay(null);
@@ -900,12 +1060,17 @@
   function lost(L) {
     if (L !== link || L.closed) return;
     const display = L.display;
+    D('connection lost');
     closeLink(L);
     if (resume && !resume.droppedAt) { resume.droppedAt = Date.now(); resume.display = display; }
     if (resume && reconnects < 3) {
       view('sessionView');
       overlay('Connection lost — reconnecting…');
       setTimeout(() => reconnect(display), 600);
+    } else if (autoReady()) {
+      exitFullscreen();
+      showLogin('Connection lost. Reconnecting automatically…');
+      startAuto('connection lost');
     } else {
       exitFullscreen();
       showLogin('Connection lost. Log in again.', 'err');
@@ -923,10 +1088,18 @@
   function disconnect() {
     const L = link;
     if (!L) return;
+    D('you disconnected');
+    stopAuto();
+    L.byeSent = true;
     ctl(['bye']);
     if (L.key) sendSecure(L, { t: 'bye' });
-    resume = null;
-    setTimeout(() => { closeLink(L); exitFullscreen(); showLogin('Disconnected.', 'ok'); }, 120);
+    // PC in "Always active" mode keeps the reconnect token for 10 min: offer the one-click Reconnect button.
+    const keep = !!(resume && resume.afterBye);
+    resume = keep ? Object.assign(resume, { droppedAt: Date.now(), display: L.display }) : null;
+    setTimeout(() => {
+      closeLink(L); exitFullscreen();
+      showLogin(keep ? 'Disconnected. Press "Reconnect" to come straight back (works for 10 minutes).' : 'Disconnected.', 'ok');
+    }, 120);
   }
 
   // ------------------------------------------------------------ input → PC
@@ -936,7 +1109,7 @@
   function ctl(a) { const L = link; if (L && L.dc.ctl && L.dc.ctl.readyState === 'open') L.dc.ctl.send(JSON.stringify(a)); }
   function chan(name, a) { const L = link; const c = L && L.dc[name]; if (c && c.readyState === 'open') c.send(JSON.stringify(a)); }
   const canControl = () => live() && !link.viewOnly;
-  const typing = () => $('modal').classList.contains('on') || (document.activeElement && /^(SELECT|TEXTAREA|INPUT)$/.test(document.activeElement.tagName));
+  const typing = () => $('modal').classList.contains('on') || $('diag').classList.contains('on') || (document.activeElement && /^(SELECT|TEXTAREA|INPUT)$/.test(document.activeElement.tagName));
 
   function normPos(e) {
     const v = $('v');
@@ -1024,7 +1197,7 @@
 
   const LOCAL = { KeyF: toggleFullscreen, KeyG: () => setMode(prefs.mode === 'game' ? 'desktop' : 'game', true), KeyS: toggleStats,
     KeyH: () => { barPinned = !barPinned; showBar(barPinned); toast(barPinned ? 'Toolbar pinned' : 'Toolbar auto-hides (move mouse to the top edge)'); },
-    KeyQ: disconnect, KeyT: openType, KeyM: toggleMute, KeyC: toggleLocalCursor };
+    KeyQ: disconnect, KeyT: openType, KeyM: toggleMute, KeyC: toggleLocalCursor, KeyD: () => openDiag() };
   // Only one cursor: by default the Chromebook's own pointer is hidden over the stream, so the one you see
   // is the PC's real cursor — exactly where clicks land, with the right shape (text, hand, resize…).
   function applyCursor() {
@@ -1181,6 +1354,157 @@
     }, 1000);
   }
 
+  // ------------------------------------------------------------ troubleshoot
+  const APP_VERSION = 'v1.4';
+  const dlog = [];
+  let lastLink = null, lastPcReport = '', testChecks = {}, testRunning = false;
+  const CHECKS = [['net', 'Internet'], ['sig', 'Signaling server'], ['pc', 'Your PC'], ['login', 'Login'], ['video', 'Video stream'], ['udp', 'Direct (UDP) path']];
+  function D(text) {
+    dlog.push(`${new Date().toTimeString().slice(0, 8)}  ${text}`);
+    if (dlog.length > 250) dlog.splice(0, dlog.length - 250);
+    if ($('diag').classList.contains('on')) renderDiag();
+  }
+  const diagOpen = () => $('diag').classList.contains('on');
+  function linkChecks() {
+    const L = lastLink, c = {};
+    if (!L) return c;
+    c.sig = L.sigJoined ? ['ok', 'Connected (supabase.co)'] : L.closed ? ['bad', "Couldn't connect. This network may block supabase.co."] : ['run', 'Connecting…'];
+    if (L.sigJoined) c.pc = L.hn ? ['ok', 'Answered: RemoteLink is running'] : L.closed ? ['bad', L.failText || 'No answer'] : ['run', 'Waiting for an answer…'];
+    if (L.hn) c.login = L.welcomed ? ['ok', L.auto ? 'Logged in automatically (auto-connect)' : 'Logged in'] : L.closed ? ['bad', L.failText || 'Refused'] : ['run', 'Logging in…'];
+    if (L.welcomed) {
+      const route = $('barRtt').textContent;
+      c.video = L.live ? ['ok', 'Streaming' + (route ? ' · ' + route : '')] : L.closed ? ['bad', (L.failText || 'Did not start') +
+        `\nCandidates here: ${[...L.localTypes].join(', ') || 'none'} · from PC: ${[...L.remoteTypes].join(', ') || 'none'}`] : ['run', 'Starting…'];
+    }
+    return c;
+  }
+  function renderDiag() {
+    const lc = linkChecks();
+    const box = $('diagChecks'); box.textContent = '';
+    for (const [id, label] of CHECKS) {
+      let st = testChecks[id] || lc[id];
+      if (id === 'net' && !st) st = navigator.onLine ? ['ok', 'Online'] : ['bad', 'This Chromebook is offline'];
+      if (!st) st = ['', id === 'udp' ? 'Press “Run connection test”' : 'Not tried yet'];
+      const row = document.createElement('div'); row.className = 'ck ' + st[0];
+      const d = document.createElement('i'); d.className = 'd';
+      const b = document.createElement('b'); b.textContent = label;
+      const s = document.createElement('span'); s.textContent = st[1];
+      row.append(d, b, s); box.appendChild(row);
+    }
+    const pre = $('diagLog');
+    pre.textContent = dlog.length ? dlog.join('\n') : 'Nothing yet. Connect, or run the connection test.';
+    pre.scrollTop = pre.scrollHeight;
+    if (lastPcReport) $('diagPc').textContent = lastPcReport;
+    $('diagPcLog').disabled = !canAskPc();
+    $('diagRun').disabled = testRunning;
+  }
+  const canAskPc = () => !!(link && link.key && link.welcomed && !link.closed);
+  function openDiag() {
+    if (live()) { releaseAll(); if (document.pointerLockElement) document.exitPointerLock(); }
+    $('diag').classList.add('on'); renderDiag(); $('diagClose').focus();
+  }
+  function closeDiag() { $('diag').classList.remove('on'); if (live()) surface.focus(); }
+  $('diagOpen').onclick = openDiag;
+  $('diagOpen2').onclick = openDiag;
+  $('diagBtn').onclick = openDiag;
+  $('diagClose').onclick = closeDiag;
+  $('diag').addEventListener('pointerdown', (e) => { if (e.target === $('diag')) closeDiag(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && diagOpen()) { e.preventDefault(); closeDiag(); } }, true);
+  $('diagPcLog').onclick = () => {
+    if (!canAskPc()) return;
+    $('diagPc').textContent = 'Asking the PC…';
+    sendSecure(link, { t: 'diag' });
+  };
+  function showPcReport(m) {
+    const h = m.host || {};
+    const yn = (v) => (v ? 'on' : 'off');
+    lastPcReport = [
+      `PC "${h.name || '?'}" · RemoteLink ${h.version || '?'} (Electron ${h.electron || '?'}) · running ${h.uptimeMin != null ? h.uptimeMin + ' min' : '?'}`,
+      `Always active: ${yn(h.alwaysActive)} · paused: ${h.paused ? 'YES' : 'no'} · keep awake: ${yn(h.keepAwake)} · start with Windows: ${yn(h.startWithWindows)}`,
+      `Cloudflare TURN relay: ${h.turn ? 'set up' : 'not set up'}${h.turnServers != null ? ` (${h.turnServers} relay server entries now)` : ''} · trusted Chromebooks: ${h.trusted != null ? h.trusted : '?'}`,
+      `Screens: ${h.displays != null ? h.displays : '?'} · signaling: ${h.signal || '?'} · allow control: ${yn(h.allowControl)} · this session: ${h.session || '-'}`,
+      '', '--- last lines of the PC activity log ---',
+      ...(Array.isArray(m.log) ? m.log.map(String) : ['(none)']),
+    ].join('\n');
+    D('PC report received');
+    if (diagOpen()) renderDiag();
+  }
+  function stunTest() {
+    return new Promise((resolve) => {
+      const types = new Set();
+      let pc = null, done = false;
+      const finish = (error) => { if (done) return; done = true; try { pc && pc.close(); } catch (e) { /* ignore */ } resolve({ types, srflx: types.has('srflx'), error }); };
+      try {
+        pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }] });
+        pc.createDataChannel('t');
+        pc.onicecandidate = (e) => { if (!e.candidate) return finish(); if (e.candidate.type) types.add(e.candidate.type); if (types.has('srflx')) finish(); };
+        pc.createOffer().then((o) => pc.setLocalDescription(o)).catch((e) => finish(e.message));
+        setTimeout(() => finish(), 6000);
+      } catch (e) { finish(e.message); }
+    });
+  }
+  function probePc(pair) {
+    // Says hello like a login would, but never logs in: tells whether the PC is online, paused or locked.
+    return new Promise((resolve) => {
+      const sid = P.b64(P.rand(12)), cn = P.b64(P.rand(16));
+      let joined = false, done = false, t1 = null, t2 = null, rt = null;
+      const finish = (r) => { if (done) return; done = true; clearTimeout(t1); clearTimeout(t2); setTimeout(() => { try { rt.close(); } catch (e) { /* ignore */ } }, 300); resolve(Object.assign({ joined }, r)); };
+      rt = new RT({
+        url: pair.url, key: pair.key, topic: 'rl:' + pair.room,
+        onMessage: (m) => {
+          if (!m || m.from !== 'h' || m.sid !== sid) return;
+          if (m.t === 'challenge') finish({ pc: 'ok', name: m.name });
+          else if (m.t === 'paused') finish({ pc: 'paused' });
+          else if (m.t === 'locked') finish({ pc: 'locked', retryIn: m.retryIn });
+        },
+        onStatus: (s) => { if (s === 'joined' && !joined) { joined = true; testChecks.sig = ['ok', 'Connected (supabase.co)']; testChecks.pc = ['run', 'Asking your PC…']; renderDiag(); } },
+      });
+      rt.connect();
+      rt.send({ from: 'c', t: 'hello', sid, cn });
+      t1 = setTimeout(() => { if (!joined) finish({}); }, 9000);
+      t2 = setTimeout(() => finish({ pc: 'silent' }), 14000);
+    });
+  }
+  async function runTest() {
+    if (testRunning) return;
+    testRunning = true; testChecks = {};
+    D('--- connection test');
+    testChecks.net = navigator.onLine ? ['ok', 'Online'] : ['bad', 'This Chromebook is offline. Check the Wi-Fi.'];
+    const pair = getPair();
+    try {
+      if (!pair) {
+        testChecks.sig = ['bad', 'This Chromebook is not paired yet. Type the pairing code first.'];
+      } else {
+        testChecks.sig = ['run', 'Connecting…']; testChecks.pc = ['', 'Waiting for the signaling server']; testChecks.udp = ['run', 'Testing…'];
+        renderDiag();
+        const [r, u] = await Promise.all([probePc(pair), stunTest()]);
+        if (!r.joined) testChecks.sig = ['bad', "Can't reach supabase.co. This network (school filter?) may block it, or there's no internet."];
+        if (!r.joined) testChecks.pc = ['', 'Not tested (needs the signaling server)'];
+        else if (r.pc === 'ok') testChecks.pc = ['ok', `Online and accepting logins${r.name ? ': "' + r.name + '"' : ''}`];
+        else if (r.pc === 'paused') testChecks.pc = ['warn', 'RemoteLink is running but remote access is PAUSED.\nOn the PC: tray icon → Resume, or tick "Always active".'];
+        else if (r.pc === 'locked') testChecks.pc = ['bad', `Logins are locked for ${Math.ceil((r.retryIn || 0) / 60)} more minute(s) after wrong attempts.`];
+        else testChecks.pc = ['bad', 'No answer. Is the PC on and awake, online, with RemoteLink running in the tray?\nIf the pairing code was changed on the PC, unpair here and pair again.'];
+        if (u.srflx) testChecks.udp = ['ok', 'UDP to the internet works: direct video connections are possible.'];
+        else testChecks.udp = ['warn', `${u.error ? 'Test error: ' + u.error + '. ' : ''}This network seems to block UDP. Video then only connects on the same Wi-Fi as the PC; ` +
+          'away from it, set up the Cloudflare TURN relay in the PC settings.'];
+        D(`test: signaling ${r.joined ? 'ok' : 'FAILED'}, PC ${r.pc || 'not tested'}, UDP ${u.srflx ? 'ok' : 'blocked'} (${[...u.types].join('/') || 'no candidates'})`);
+      }
+    } finally { testRunning = false; renderDiag(); }
+  }
+  $('diagRun').onclick = runTest;
+  $('diagCopy').onclick = () => {
+    const lc = linkChecks();
+    const rows = CHECKS.map(([id, label]) => { const s = testChecks[id] || lc[id] || ['', '-']; return `${(s[0] || '-').toUpperCase().padEnd(5)} ${label}: ${String(s[1]).replace(/\n/g, ' ')}`; });
+    const pr = getPair();
+    const rep = [
+      `RemoteLink Chromebook app ${APP_VERSION} · ${new Date().toString()}`, navigator.userAgent,
+      `paired: ${pr ? 'yes' : 'no'} · trusted: ${pr && pr.dev ? 'yes' : 'no'} · auto-connect: ${autoReady() ? 'on' : 'off'}`,
+      '', 'CHECKS', ...rows, '', 'THIS CHROMEBOOK', ...dlog, '', 'PC REPORT', lastPcReport || '(not fetched)',
+    ].join('\n');
+    navigator.clipboard.writeText(rep).then(() => { $('diagCopy').textContent = 'Copied ✔'; setTimeout(() => { $('diagCopy').textContent = 'Copy report'; }, 1800); },
+      () => { $('diagCopy').textContent = "Couldn't copy"; setTimeout(() => { $('diagCopy').textContent = 'Copy report'; }, 1800); });
+  };
+
   // ------------------------------------------------------------ boot
   window.addEventListener('beforeunload', () => { if (live()) { ctl(['bye']); } });
   (function boot() {
@@ -1190,6 +1514,13 @@
       if (p) { savePair(p); }
     }
     showLogin();
+    D(`page opened (${APP_VERSION})`);
+    if (autoReady()) {
+      status('loginStatus', 'Connecting automatically…', '', true);
+      $('autoStop').classList.remove('hidden');
+      autoActive = true;
+      autoTimer = setTimeout(() => { autoActive = false; startAuto('page opened'); }, 700);
+    }
   })();
   window.__rl = { getPair, live: () => live(), link: () => link }; // debugging aid
 })();
