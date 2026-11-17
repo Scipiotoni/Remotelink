@@ -164,7 +164,7 @@
       <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">C</span> second cursor · <span class="kbd">D</span> troubleshoot · <span class="kbd">Q</span> disconnect.<br>
       Move the mouse to the top edge for the toolbar. In full screen, hold <span class="kbd">Esc</span> to leave. The Search key acts as the Windows key.</p>
     </details>
-    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.4 · about</a></div>
+    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.4.1 · about</a></div>
   </div>
 </section>
 
@@ -539,7 +539,7 @@
     idle: 'Disconnected: the session was idle for too long.',
     replaced: 'Another device logged in to this PC.',
     'host-disconnected': 'The session was ended from the PC.',
-    'host-restarted': 'RemoteLink on the PC restarted or its settings changed. Log in again.',
+    'host-restarted': 'RemoteLink on the PC restarted its connection or its settings changed. Connect again.',
     'host-quit': 'RemoteLink was closed on the PC.',
     'capture-failed': "The PC couldn't capture its screen.",
     'client-disconnected': 'Disconnected.',
@@ -1355,7 +1355,7 @@
   }
 
   // ------------------------------------------------------------ troubleshoot
-  const APP_VERSION = 'v1.4';
+  const APP_VERSION = 'v1.4.1';
   const dlog = [];
   let lastLink = null, lastPcReport = '', testChecks = {}, testRunning = false;
   const CHECKS = [['net', 'Internet'], ['sig', 'Signaling server'], ['pc', 'Your PC'], ['login', 'Login'], ['video', 'Video stream'], ['udp', 'Direct (UDP) path']];
