@@ -79,6 +79,13 @@
   #toast { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); z-index: 7; background: rgba(8,10,18,.95); border: 1px solid var(--pink);
            color: var(--text); padding: 9px 16px; border-radius: 10px; box-shadow: 0 0 18px #ff2bd640; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 80vw; text-align: center; }
   #toast.show { opacity: 1; }
+  #monWarn { position: absolute; top: 12px; right: 12px; z-index: 6; max-width: min(420px, calc(100vw - 24px)); display: none; gap: 10px; align-items: flex-start;
+             background: rgba(8,10,18,.94); border: 1px solid #ffd23f; border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 13px; line-height: 1.45;
+             box-shadow: 0 0 18px #ffd23f40; }
+  #monWarn.on { display: flex; }
+  #monWarn b { color: #ffd23f; }
+  #monWarn button { flex: 0 0 auto; background: none; border: 0; color: var(--text); font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px; opacity: .8; }
+  #monWarn button:hover { opacity: 1; color: #ffd23f; }
   #overlay { position: absolute; inset: 0; z-index: 8; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.55); }
   #overlay.on { display: flex; }
   #overlay .box { background: rgba(10,12,22,.96); border: 1px solid var(--cyan); border-radius: 14px; padding: 18px 24px; font-size: 16px; text-align: center; box-shadow: 0 0 30px #00f0ff30; }
@@ -164,7 +171,7 @@
       <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">C</span> second cursor · <span class="kbd">D</span> troubleshoot · <span class="kbd">Q</span> disconnect.<br>
       Move the mouse to the top edge for the toolbar. In full screen, hold <span class="kbd">Esc</span> to leave. The Search key acts as the Windows key.</p>
     </details>
-    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.4.1 · about</a></div>
+    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.4.2 · about</a></div>
   </div>
 </section>
 
@@ -210,6 +217,7 @@
   </div>
   <div id="hud"></div>
   <div id="toast"></div>
+  <div id="monWarn" role="alert"><div><b>⚠ No monitor is on at the PC.</b><br>Desktop apps work, but games like Minecraft may show a <b>white or black window</b>. Turn the PC's monitor on (or plug in an HDMI dummy plug).</div><button id="monWarnX" title="Hide this warning">✕</button></div>
   <div id="overlay"><div class="box" id="overlayText"></div></div>
   <div id="modal"><div class="card">
     <label for="typeArea">Text to type on the PC (exactly as written)</label>
@@ -633,6 +641,7 @@
   for (const b of document.querySelectorAll('#barMode button')) b.onclick = () => setMode(b.dataset.mode, true);
 
   function showLogin(msg, kind) {
+    $('monWarn').classList.remove('on');
     const pair = getPair();
     if (!pair) { view('pairView'); $('pairInput').focus(); return; }
     $('pcName').textContent = pair.name;
@@ -904,6 +913,13 @@
       else L.pendingIce.push(msg.c);
     } else if (msg.t === 'diag') {
       showPcReport(msg);
+    } else if (msg.t === 'monitor') {
+      const n = Number(msg.count);
+      const was = L.monitors;
+      L.monitors = n;
+      D(n === 0 ? 'PC: no monitor is switched on (OpenGL games may show white)' : `PC: ${n} monitor${n === 1 ? '' : 's'} on`);
+      if (n === 0) $('monWarn').classList.add('on');
+      else { $('monWarn').classList.remove('on'); if (was === 0) toast('PC monitor is on again.'); }
     } else if (msg.t === 'bye') {
       ended(L, msg.reason);
     }
@@ -1355,7 +1371,7 @@
   }
 
   // ------------------------------------------------------------ troubleshoot
-  const APP_VERSION = 'v1.4.1';
+  const APP_VERSION = 'v1.4.2';
   const dlog = [];
   let lastLink = null, lastPcReport = '', testChecks = {}, testRunning = false;
   const CHECKS = [['net', 'Internet'], ['sig', 'Signaling server'], ['pc', 'Your PC'], ['login', 'Login'], ['video', 'Video stream'], ['udp', 'Direct (UDP) path']];
@@ -1404,6 +1420,7 @@
     $('diag').classList.add('on'); renderDiag(); $('diagClose').focus();
   }
   function closeDiag() { $('diag').classList.remove('on'); if (live()) surface.focus(); }
+  $('monWarnX').onclick = () => { $('monWarn').classList.remove('on'); $('surface').focus(); };
   $('diagOpen').onclick = openDiag;
   $('diagOpen2').onclick = openDiag;
   $('diagBtn').onclick = openDiag;
@@ -1422,6 +1439,7 @@
       `PC "${h.name || '?'}" · RemoteLink ${h.version || '?'} (Electron ${h.electron || '?'}) · running ${h.uptimeMin != null ? h.uptimeMin + ' min' : '?'}`,
       `Always active: ${yn(h.alwaysActive)} · paused: ${h.paused ? 'YES' : 'no'} · keep awake: ${yn(h.keepAwake)} · start with Windows: ${yn(h.startWithWindows)}`,
       `Cloudflare TURN relay: ${h.turn ? 'set up' : 'not set up'}${h.turnServers != null ? ` (${h.turnServers} relay server entries now)` : ''} · trusted Chromebooks: ${h.trusted != null ? h.trusted : '?'}`,
+      `Monitors switched on: ${h.monitors == null ? '?' : h.monitors === 0 ? '0 ⚠ (OpenGL games like Minecraft will show a white window — turn the monitor on or use an HDMI dummy plug)' : h.monitors}`,
       `Screens: ${h.displays != null ? h.displays : '?'} · signaling: ${h.signal || '?'} · allow control: ${yn(h.allowControl)} · this session: ${h.session || '-'}`,
       '', '--- last lines of the PC activity log ---',
       ...(Array.isArray(m.log) ? m.log.map(String) : ['(none)']),
