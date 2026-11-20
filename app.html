@@ -65,6 +65,9 @@
   #bar select { padding: 6px 8px; font-family: system-ui; }
   #bar .who { font: 600 13px system-ui; color: var(--text); padding: 0 6px; }
   #bar .who small { color: var(--dim); font-weight: 500; }
+  #barName { cursor: pointer; } #barName:hover { text-decoration: underline dotted; }
+  #bar #tabNameBtn { padding: 2px 7px; font-size: 12px; border-color: transparent; color: var(--dim); }
+  #bar #tabNameBtn:hover { color: var(--cyan); border-color: #00f0ff55; }
   #bar .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--lime); box-shadow: 0 0 8px var(--lime); margin-right: 6px; }
   #bar .dot.relay { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
   #bar .red { color: var(--red); border-color: #ff4d6d88; }
@@ -170,10 +173,10 @@
     <details><summary>Keyboard shortcuts during a session</summary>
       <p class="sub" style="margin:8px 0 0">Hold <span class="kbd">Ctrl+Alt+Shift</span> and press:<br>
       <span class="kbd">F</span> full screen · <span class="kbd">G</span> game/desktop · <span class="kbd">S</span> stats · <span class="kbd">H</span> pin toolbar ·
-      <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">C</span> second cursor · <span class="kbd">D</span> troubleshoot · <span class="kbd">Q</span> disconnect.<br>
+      <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">C</span> second cursor · <span class="kbd">D</span> troubleshoot · <span class="kbd">R</span> rename tab · <span class="kbd">Q</span> disconnect.<br>
       Move the mouse to the top edge for the toolbar. In full screen, hold <span class="kbd">Esc</span> to leave. The Search key acts as the Windows key.</p>
     </details>
-    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.4.4 · about</a></div>
+    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.4.5 · about</a></div>
   </div>
 </section>
 
@@ -183,7 +186,7 @@
   <div id="surface" tabindex="0"></div>
   <div id="hotzone"></div>
   <div id="bar">
-    <span class="who"><span class="dot" id="routeDot"></span><span id="barName">PC</span> <small id="barRtt"></small></span>
+    <span class="who"><span class="dot" id="routeDot"></span><span id="barName" title="Click to rename this tab">PC</span> <button id="tabNameBtn" title="Rename this tab, to tell your PCs apart (Ctrl+Alt+Shift+R)">✎</button> <small id="barRtt"></small></span>
     <span class="tag hidden" id="voTag">VIEW ONLY</span>
     <div class="seg" id="barMode"><button data-mode="desktop">Desktop</button><button data-mode="game">Game</button></div>
     <select id="barDisplay" title="Which screen"></select>
@@ -595,12 +598,35 @@
     const p = store.get(STORE);
     if (!p || !p.room) return null;
     const dev = p.dev && typeof p.dev.id === 'string' && typeof p.dev.k === 'string' ? p.dev : null;
-    return { room: p.room, name: p.name || 'your PC', url: p.url || DEFAULT_SIGNAL.url, key: p.key || DEFAULT_SIGNAL.key, dev };
+    return { room: p.room, name: p.name || 'your PC', label: typeof p.label === 'string' ? p.label : '', url: p.url || DEFAULT_SIGNAL.url, key: p.key || DEFAULT_SIGNAL.key, dev };
   }
   function savePair(p) {
     const custom = p.url && p.key && (p.url !== DEFAULT_SIGNAL.url || p.key !== DEFAULT_SIGNAL.key);
-    store.set(STORE, { room: p.room, name: p.name, url: custom ? p.url : '', key: custom ? p.key : '', dev: p.dev || null });
+    store.set(STORE, { room: p.room, name: p.name, label: p.label || '', url: custom ? p.url : '', key: custom ? p.key : '', dev: p.dev || null });
   }
+  // Tab name: "Home PC · RemoteLink" (● while connected), so several tabs/PCs can be told apart.
+  // The custom name is saved with the pairing; empty = the PC's own name.
+  function tabTitle(p, connected) {
+    const name = p ? (p.label || p.name) : '';
+    document.title = name ? `${connected ? '● ' : ''}${name} · RemoteLink` : 'RemoteLink';
+  }
+  function renameTab() {
+    const L = link, p = (L && L.pair) || getPair();
+    if (!p) return;
+    if (document.pointerLockElement) document.exitPointerLock();
+    const v = prompt('Name for this tab (to tell your PCs apart). Leave empty to use the PC\'s own name:', p.label || p.name);
+    if (v === null) { if (live()) surface.focus(); return; }
+    p.label = v.replace(/\s+/g, ' ').trim().slice(0, 40);
+    const saved = getPair();
+    if (saved && saved.room === p.room) { saved.label = p.label; savePair(saved); }
+    const shown = p.label || p.name;
+    $('barName').textContent = shown; $('pcName').textContent = shown;
+    tabTitle(p, live());
+    toast(`This tab is now called "${shown}".`);
+    if (live()) surface.focus();
+  }
+  $('tabNameBtn').onclick = renameTab;
+  $('barName').onclick = renameTab;
   // Trusted-device key: the PC hands it out after one login with the code; with it, the password is enough.
   function forgetDevice() { const p = getPair(); if (p && p.dev) { p.dev = null; savePair(p); } }
   function deviceLabel() {
@@ -646,7 +672,7 @@
     $('monWarn').classList.remove('on');
     const pair = getPair();
     if (!pair) { view('pairView'); $('pairInput').focus(); return; }
-    $('pcName').textContent = pair.name;
+    $('pcName').textContent = pair.label || pair.name; tabTitle(pair, false);
     $('quality').value = prefs.quality; $('fps').value = prefs.fps; $('codec').value = prefs.codec; $('audio').value = prefs.audio;
     $('fullRes').checked = !!prefs.fullRes; $('fsOnConnect').checked = prefs.fs !== false;
     setMode(prefs.mode);
@@ -795,7 +821,7 @@
       if (L.hn) return;
       L.hn = m.hn;
       D(`PC answered: "${m.name || '?'}"`);
-      if (m.name && m.name !== L.pair.name) { L.pair.name = m.name; savePair(L.pair); $('pcName').textContent = m.name; }
+      if (m.name && m.name !== L.pair.name) { L.pair.name = m.name; savePair(L.pair); $('pcName').textContent = L.pair.label || m.name; tabTitle(L.pair, false); }
       let proof, raw;
       if (o.mode === 'resume') {
         proof = await P.resumeProof(resume.token, L.cn, L.hn, L.viewOnly);
@@ -875,6 +901,7 @@
       L.welcomed = true;
       L.viewOnly = !!msg.viewOnly;
       L.ice = msg.iceServers || [];
+      if (msg.name && msg.name !== L.pair.name) { L.pair.name = msg.name; savePair(L.pair); }
       L.name = msg.name || L.pair.name;
       resume = msg.resume ? { tid: msg.resume.tid, token: P.unb64(msg.resume.token), viewOnly: L.viewOnly, droppedAt: 0, afterBye: !!msg.resumeAfterBye } : null;
       D(`logged in${L.viewOnly ? ' (view only)' : ''}; ${L.ice.length} ICE server entr${L.ice.length === 1 ? 'y' : 'ies'} from the PC${L.ice.some((s) => /turns?:/.test([].concat(s.urls).join(' '))) ? ' incl. TURN relay' : ' (no TURN relay)'}`);
@@ -983,7 +1010,7 @@
     L.timers.forEach(clearTimeout); L.timers = [];
     $('connectBtn').disabled = false;
     status('loginStatus', '');
-    $('barName').textContent = L.name;
+    $('barName').textContent = L.pair.label || L.name; tabTitle(L.pair, true);
     $('voTag').classList.toggle('hidden', !L.viewOnly);
     $('barQuality').value = prefs.quality;
     setMode(prefs.mode);
@@ -1215,7 +1242,7 @@
 
   const LOCAL = { KeyF: toggleFullscreen, KeyG: () => setMode(prefs.mode === 'game' ? 'desktop' : 'game', true), KeyS: toggleStats,
     KeyH: () => { barPinned = !barPinned; showBar(barPinned); toast(barPinned ? 'Toolbar pinned' : 'Toolbar auto-hides (move mouse to the top edge)'); },
-    KeyQ: disconnect, KeyT: openType, KeyM: toggleMute, KeyC: toggleLocalCursor, KeyD: () => openDiag() };
+    KeyQ: disconnect, KeyT: openType, KeyM: toggleMute, KeyC: toggleLocalCursor, KeyD: () => openDiag(), KeyR: renameTab };
   // Only one cursor: by default the Chromebook's own pointer is hidden over the stream, so the one you see
   // is the PC's real cursor — exactly where clicks land, with the right shape (text, hand, resize…).
   function applyCursor() {
@@ -1373,7 +1400,7 @@
   }
 
   // ------------------------------------------------------------ troubleshoot
-  const APP_VERSION = 'v1.4.4';
+  const APP_VERSION = 'v1.4.5';
   const dlog = [];
   let lastLink = null, lastPcReport = '', testChecks = {}, testRunning = false;
   const CHECKS = [['net', 'Internet'], ['sig', 'Signaling server'], ['pc', 'Your PC'], ['login', 'Login'], ['video', 'Video stream'], ['udp', 'Direct (UDP) path']];
