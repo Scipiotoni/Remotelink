@@ -608,7 +608,7 @@
   // The custom name is saved with the pairing; empty = the PC's own name.
   function tabTitle(p, connected) {
     const name = p ? (p.label || p.name) : '';
-    document.title = name ? `${connected ? '● ' : ''}${name} · RemoteLink` : 'RemoteLink';
+    document.title = name ? `${connected ? '● ' : ''}${name}` : 'RemoteLink';
   }
   function renameTab() {
     const L = link, p = (L && L.pair) || getPair();
