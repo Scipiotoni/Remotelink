@@ -75,6 +75,13 @@
   ol.big b { color: var(--text); }
   .showme, .showme-demo { white-space: nowrap; font-size: 13px; font-weight: 650; color: var(--cyan); text-decoration: none; border: 1px solid #00f0ff44; border-radius: 20px; padding: 1px 9px; margin-left: 2px; }
   .showme:hover { background: #00f0ff14; }
+  .cmd { display: flex; align-items: stretch; background: #060810; border: 1px solid #00f0ff55; border-radius: 12px; box-shadow: 0 0 26px #00f0ff1a; overflow: hidden; margin: 10px 0 6px; }
+  .cmd code { flex: 1; padding: 12px 14px; font: 13.5px/1.5 Consolas, ui-monospace, monospace; color: var(--lime); white-space: pre-wrap; word-break: break-all; }
+  .cmd button { flex: 0 0 auto; border: 0; border-left: 1px solid var(--line); background: #0c0f1a; color: var(--cyan); font: 700 14px system-ui; padding: 0 18px; cursor: pointer; }
+  .cmd button:hover { background: #00f0ff14; } .cmd button.ok { color: var(--lime); }
+  .fast { border-color: #00f0ff55; box-shadow: 0 0 30px #00f0ff14; margin-bottom: 18px; }
+  .fast h3 { margin: 4px 0 6px; } .fast p { margin: 6px 0; color: var(--dim); }
+  .classic > summary { cursor: pointer; color: var(--cyan); font-weight: 600; margin: 4px 0 8px; }
   .tip { margin: 6px 0 0; color: var(--dim); font-size: 14px; line-height: 2.1; }
   ul.stuck { margin: 10px 0 0; padding-left: 20px; color: #b9c0dd; font-size: 14.5px; } ul.stuck li { margin: 8px 0; } ul.stuck b { color: var(--text); }
 
@@ -218,6 +225,7 @@
   footer { padding: 30px 0 50px; color: var(--dim); font-size: 13.5px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 
   @media (max-width: 820px) {
+    .cmd { flex-direction: column; } .cmd button { padding: 10px; border-left: 0; border-top: 1px solid var(--line); }
     .hero { grid-template-columns: 1fr; padding-top: 20px; }
     .grid { grid-template-columns: 1fr; }
     .sec { grid-template-columns: 1fr; }
@@ -315,22 +323,31 @@
     <p class="sub">A tiny app on the PC waits quietly in the tray. You start every connection from the Chromebook.</p>
     <div class="grid">
       <div class="card"><span class="ic">🤝</span><h3>Handshake</h3><p>The Chromebook and your PC find each other through a private, encrypted room. This takes a few seconds and carries no screen data.</p></div>
-      <div class="card"><span class="ic">⚡</span><h3>Direct stream</h3><p>Video goes straight between the two computers with WebRTC, encoded by your graphics card at up to 60 fps. On strict school networks, an optional Cloudflare relay takes over.</p></div>
+      <div class="card"><span class="ic">⚡</span><h3>Direct stream</h3><p>Video goes straight between the two computers with WebRTC, encoded by your graphics card at up to 60 fps. On strict school networks, the built-in relay takes over automatically.</p></div>
       <div class="card"><span class="ic">🖱️</span><h3>Real control</h3><p>Mouse, keyboard, scroll, clipboard and special keys. Desktop mode keeps text sharp; Game mode captures the mouse for smooth camera movement.</p></div>
     </div>
   </section>
 
   <section id="setup">
     <h2>Set it up, <span>step by step</span></h2>
-    <p class="sub">About 10 minutes, only once. You need three things: your <b>Windows PC</b>, your <b>Chromebook</b> and your <b>phone</b>. Not sure about a step? Click <span class="showme-demo">▶ show me</span> next to it to watch it.</p>
+    <p class="sub">About 5 minutes, only once. You need three things: your <b>Windows PC</b>, your <b>Chromebook</b> and your <b>phone</b>. Not sure about a step? Click <span class="showme-demo">▶ show me</span> next to it to watch it.</p>
     <div class="two">
       <div class="card"><span class="n">PART 1 · ON YOUR WINDOWS PC</span>
+        <div class="card fast"><span class="n">⚡ FASTEST: ONE LINE, NO UNZIPPING</span>
+          <h3>Press <kbd>Win</kbd>+<kbd>R</kbd>, paste this, press <kbd>Enter</kbd></h3>
+          <div class="cmd"><code id="winCmd">powershell -ep bypass -c "irm https://scipiotoni.github.io/Remotelink/install.ps1 | iex"</code><button data-copy="winCmd">Copy</button></div>
+          <p>A blue window downloads RemoteLink (about 110 MB, no admin rights needed) and opens its setup window. Then continue at step 4. Run the same line again any time to update.</p>
+        </div>
+        <details class="classic"><summary>Or the classic way: download and unzip (steps 1–3)</summary>
         <ol class="big">
           <li><b>Download.</b> On the PC (not the Chromebook), click <a href="RemoteLink.zip" download>Download for Windows</a>. A file called <i>RemoteLink.zip</i> lands in your <b>Downloads</b> folder. <a class="showme" href="#tour" data-chap="0">▶ show me</a></li>
           <li><b>Unzip it.</b> A .zip is a packed folder, so unpack it first: open <b>File Explorer</b> (the yellow folder on the taskbar) → <b>Downloads</b> → <b>right-click</b> RemoteLink.zip → <b>Extract All…</b> → change the folder to <b>Documents</b> → <b>Extract</b>. <a class="showme" href="#tour" data-chap="1">▶ show me</a></li>
-          <li><b>Install.</b> In the new RemoteLink folder, double-click <b>host</b>, then double-click <b>install</b> (the one with the gear icon). If a blue box says “Windows protected your PC”, click <b>More info</b> → <b>Run anyway</b>. A black window downloads about 110 MB; let it finish on its own. <a class="showme" href="#tour" data-chap="2">▶ show me</a></li>
-          <li><b>Password &amp; phone.</b> The settings window opens. Name your PC, pick a password (10+ characters) and type it twice. Scan the square code with an authenticator app on your phone, type the 6 digits it shows, click <b>Check</b>, then <b>Save</b>. <a class="showme" href="#tour" data-chap="3">▶ show me</a></li>
-          <li><b>Leave the pairing code on screen.</b> You'll type it on the Chromebook next.</li>
+          <li><b>Install.</b> In the new RemoteLink folder, double-click <b>host</b>, then double-click <b>install</b> (the one with the gear icon). If a blue box says “Windows protected your PC”, click <b>More info</b> → <b>Run anyway</b>. A blue window downloads about 110 MB; let it finish on its own. <a class="showme" href="#tour" data-chap="2">▶ show me</a></li>
+        </ol>
+        </details>
+        <ol class="big" start="4">
+          <li><b>Password &amp; phone.</b> The settings window opens. Name your PC, pick a password (10+ characters) and type it twice. Scan the square code with an authenticator app on your phone, type the 6 digits it shows, click <b>Check</b>, then <b>Save</b>. That's all: the relay for school Wi-Fi is already built in. <a class="showme" href="#tour" data-chap="3">▶ show me</a></li>
+          <li><b>Leave the pairing code on screen.</b> You'll type it on the Chromebook next, or just scan its QR code with the Chromebook's Camera app.</li>
         </ol>
       </div>
       <div class="card"><span class="n">PART 2 · ON THE CHROMEBOOK</span>
@@ -348,8 +365,8 @@
         <li><b>There's no “Extract All…”.</b> On Windows 11, click <b>Show more options</b> at the bottom of the menu first. Still missing? Another program has taken over .zip files: right-click → <b>Open with</b> → <b>Windows Explorer</b>, then click <b>Extract all</b> at the top of the window.</li>
         <li><b>I can't see “install.bat”.</b> Windows hides the end of file names. Pick the file called <b>install</b> whose type is <b>Windows Batch File</b> (gear icon).</li>
         <li><b>A blue box says “Windows protected your PC”.</b> Click <b>More info</b>, then <b>Run anyway</b>. It shows up because RemoteLink is new and isn't signed by a big company.</li>
-        <li><b>The black window says Node.js was installed.</b> Close it and double-click <b>install</b> again.</li>
-        <li><b>The black window says “Install failed” or closes at once.</b> Check the PC's internet connection and double-click <b>install</b> again.</li>
+        <li><b>Win+R doesn't work.</b> Right-click the <b>Start</b> button → <b>Run</b>, then paste the line there. Or click <b>Start</b>, type <b>PowerShell</b>, open it, paste the line and press <kbd>Enter</kbd>.</li>
+        <li><b>The window says “Install failed” or closes at once.</b> Check the PC's internet connection and run the installer again.</li>
         <li><b>Where did RemoteLink go?</b> It lives next to the clock (click the <b>^</b> arrow if you don't see its icon) and starts by itself with Windows. Right-click it → <b>Settings &amp; pairing</b> to see your pairing code again.</li>
       </ul>
     </details>
@@ -376,23 +393,23 @@
     <h2>Share it with <span>friends</span></h2>
     <p class="sub">Everyone controls their own PC from their own Chromebook, all at the same time, each in a separate private room.</p>
     <div class="grid">
-      <div class="card"><h3>Send this page</h3><p>Friends download the PC app from here and install it on <b>their own</b> PC.</p></div>
+      <div class="card"><h3>Send this page</h3><p>Friends paste the one-line installer on <b>their own</b> PC. About 5 minutes, no accounts to create.</p></div>
       <div class="card"><h3>Own password &amp; code</h3><p>Each PC has its own password, authenticator and pairing code. Nobody can reach anyone else's PC.</p></div>
-      <div class="card"><h3>Own relay</h3><p>If their school network needs the relay, each person sets up their own free Cloudflare relay in the PC settings.</p></div>
+      <div class="card"><h3>Relay included</h3><p>The shared relay for strict school networks works for everyone out of the box. Nothing to sign up for.</p></div>
     </div>
   </section>
 
   <section id="help">
     <h2>Help</h2>
     <details><summary>“Your PC didn't answer”</summary><p>The PC must be on, awake and online, with the RemoteLink tray icon cyan (it may be hidden under the ^ arrow next to the clock).</p></details>
-    <details><summary>“The stream didn't start”</summary><p>The network blocks direct video connections. Add the free Cloudflare relay in the PC settings (tray → Settings &amp; pairing → Settings).</p></details>
+    <details><summary>“The stream didn't start”</summary><p>The network blocks direct video connections and the relay couldn't help. Check that <b>Use the free shared relay</b> is ticked in the PC settings (tray → Settings &amp; pairing → Settings → More options) and press <b>Test</b>. Still failing? Open 🩺 Troubleshoot in the app.</p></details>
     <details><summary>Black screen</summary><p>The PC is on the lock screen or showing an administrator (UAC) prompt. Windows doesn't allow either to be controlled remotely.</p></details>
     <details><summary>It feels laggy</summary><p>Open stats with <kbd>Ctrl+Alt+Shift+S</kbd>. “Relay” adds a little delay; lower the bandwidth to Balanced or use 30 fps on weak Wi-Fi. A network cable on the PC helps.</p></details>
     <details><summary>Keyboard shortcuts in the app</summary><p>Hold <kbd>Ctrl+Alt+Shift</kbd> and press <kbd>F</kbd> full screen · <kbd>G</kbd> game mode · <kbd>S</kbd> stats · <kbd>H</kbd> toolbar · <kbd>T</kbd> type text · <kbd>M</kbd> sound · <kbd>C</kbd> second cursor · <kbd>R</kbd> rename the tab · <kbd>Q</kbd> disconnect. The Search key works as the Windows key.</p></details>
-    <details><summary>Is this page up to date?</summary><p>This page is <b>v1.5.0</b>. The version is also shown at the bottom of the app's login screen. If you just uploaded a new version, wait 1–2 minutes and reload with <kbd>Ctrl+Shift+R</kbd>.</p></details>
+    <details><summary>Is this page up to date?</summary><p>This page is <b>v1.6.0</b>. The version is also shown at the bottom of the app's login screen. If you just uploaded a new version, wait 1–2 minutes and reload with <kbd>Ctrl+Shift+R</kbd>.</p></details>
   </section>
 
-  <footer><span>RemoteLink v1.5.0 · 23 Nov 2026</span><span><a href="app.html">Open the app</a> · <a href="RemoteLink.zip" download>Windows download</a> · <a href="mac.html">Mac</a> · <a href="linux.html">Linux</a></span></footer>
+  <footer><span>RemoteLink v1.6.0 · 23 Nov 2026</span><span><a href="app.html">Open the app</a> · <a href="RemoteLink.zip" download>Windows download</a> · <a href="mac.html">Mac</a> · <a href="linux.html">Linux</a></span></footer>
 </div>
 <script>
   (function () {
@@ -405,9 +422,20 @@
     } catch (e) { /* storage blocked: nothing to show */ }
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
-      if (e.target && e.target.closest && e.target.closest('#player')) return; // the walkthrough has its own keys
+      if (e.target && e.target.closest && e.target.closest('#player, button, a, summary')) return; // the walkthrough has its own keys; focused controls keep theirs
       if (e.key === 'Enter') location.href = 'app.html';
       else if (e.key === 'd' || e.key === 'D') document.querySelector('a[download]').click();
+    });
+    document.querySelectorAll('[data-copy]').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const el = document.getElementById(b.dataset.copy);
+        try { await navigator.clipboard.writeText(el.textContent); } catch (e) {
+          const r = document.createRange(); r.selectNodeContents(el);
+          const s = getSelection(); s.removeAllRanges(); s.addRange(r); document.execCommand('copy');
+        }
+        b.textContent = 'Copied ✓'; b.classList.add('ok');
+        setTimeout(() => { b.textContent = 'Copy'; b.classList.remove('ok'); }, 1800);
+      });
     });
   })();
 </script>

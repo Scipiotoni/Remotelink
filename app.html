@@ -176,7 +176,7 @@
       <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">C</span> second cursor · <span class="kbd">D</span> troubleshoot · <span class="kbd">R</span> rename tab · <span class="kbd">Q</span> disconnect.<br>
       Move the mouse to the top edge for the toolbar. In full screen, hold <span class="kbd">Esc</span> to leave. The Search key acts as the Windows key.</p>
     </details>
-    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.5.0 · about</a></div>
+    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.6.0 · about</a></div>
   </div>
 </section>
 
@@ -930,7 +930,7 @@
         setTimeout(() => {
           if (L.live || L.closed || L !== link) return;
           if (resume && reconnects < 3) { const d = L.display; closeLink(L); setTimeout(() => reconnect(d), 300); return; }
-          fail(L, "The stream didn't start. The network may be blocking video connections (set up the Cloudflare relay on the PC).\nOpen 🩺 Troubleshoot for details.", true);
+          fail(L, "The stream didn't start. The network may be blocking video connections (check that the shared relay is on in the PC settings).\nOpen 🩺 Troubleshoot for details.", true);
         }, 1500);
       }, 12000));
     } else if (msg.t === 'offer') {
@@ -1400,7 +1400,7 @@
   }
 
   // ------------------------------------------------------------ troubleshoot
-  const APP_VERSION = 'v1.5.0';
+  const APP_VERSION = 'v1.6.0';
   const dlog = [];
   let lastLink = null, lastPcReport = '', testChecks = {}, testRunning = false;
   const CHECKS = [['net', 'Internet'], ['sig', 'Signaling server'], ['pc', 'Your PC'], ['login', 'Login'], ['video', 'Video stream'], ['udp', 'Direct (UDP) path']];
@@ -1468,7 +1468,7 @@
       `PC "${h.name || '?'}" · RemoteLink ${h.version || '?'} (Electron ${h.electron || '?'}) · running ${h.uptimeMin != null ? h.uptimeMin + ' min' : '?'}`,
       ...(h.os ? [`System: ${h.os} · mouse/keyboard control: ${h.input || '?'}`] : []),
       `Always active: ${yn(h.alwaysActive)} · paused: ${h.paused ? 'YES' : 'no'} · keep awake: ${yn(h.keepAwake)} · start at login: ${yn(h.startWithWindows)}`,
-      `Cloudflare TURN relay: ${h.turn ? 'set up' : 'not set up'}${h.turnServers != null ? ` (${h.turnServers} relay server entries now)` : ''} · trusted Chromebooks: ${h.trusted != null ? h.trusted : '?'}`,
+      `Relay: ${h.relay ? ({ shared: 'shared RemoteLink relay', own: 'own Cloudflare relay', off: 'OFF (direct only)' })[h.relay] || h.relay : (h.turn ? 'own Cloudflare relay' : 'not set up')}${h.turnServers != null ? ` (${h.turnServers} relay server entries now)` : ''} · trusted Chromebooks: ${h.trusted != null ? h.trusted : '?'}`,
       `Monitors switched on: ${h.monitors == null ? '?' : h.monitors === 0 ? '0 ⚠ (OpenGL games like Minecraft will show a white window — turn the monitor on or use an HDMI dummy plug)' : h.monitors}`,
       `Screens: ${h.displays != null ? h.displays : '?'} · signaling: ${h.signal || '?'} · allow control: ${yn(h.allowControl)} · this session: ${h.session || '-'}`,
       '', '--- last lines of the PC activity log ---',
@@ -1534,7 +1534,7 @@
         else testChecks.pc = ['bad', 'No answer. Is the PC on and awake, online, with RemoteLink running in the tray?\nIf the pairing code was changed on the PC, unpair here and pair again.'];
         if (u.srflx) testChecks.udp = ['ok', 'UDP to the internet works: direct video connections are possible.'];
         else testChecks.udp = ['warn', `${u.error ? 'Test error: ' + u.error + '. ' : ''}This network seems to block UDP. Video then only connects on the same Wi-Fi as the PC; ` +
-          'away from it, set up the Cloudflare TURN relay in the PC settings.'];
+          'away from it, the relay on the PC is needed (on by default: PC settings → More options).'];
         D(`test: signaling ${r.joined ? 'ok' : 'FAILED'}, PC ${r.pc || 'not tested'}, UDP ${u.srflx ? 'ok' : 'blocked'} (${[...u.types].join('/') || 'no candidates'})`);
       }
     } finally { testRunning = false; renderDiag(); }
