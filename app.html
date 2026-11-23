@@ -176,7 +176,7 @@
       <span class="kbd">T</span> type text · <span class="kbd">M</span> sound · <span class="kbd">C</span> second cursor · <span class="kbd">D</span> troubleshoot · <span class="kbd">R</span> rename tab · <span class="kbd">Q</span> disconnect.<br>
       Move the mouse to the top edge for the toolbar. In full screen, hold <span class="kbd">Esc</span> to leave. The Search key acts as the Windows key.</p>
     </details>
-    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.4.5 · about</a></div>
+    <div class="foot"><button id="unpairBtn" class="link">Unpair this Chromebook</button><button id="diagOpen" class="link">🩺 Troubleshoot</button><a class="ver" href="./" title="About RemoteLink">v1.5.0 · about</a></div>
   </div>
 </section>
 
@@ -1400,7 +1400,7 @@
   }
 
   // ------------------------------------------------------------ troubleshoot
-  const APP_VERSION = 'v1.4.5';
+  const APP_VERSION = 'v1.5.0';
   const dlog = [];
   let lastLink = null, lastPcReport = '', testChecks = {}, testRunning = false;
   const CHECKS = [['net', 'Internet'], ['sig', 'Signaling server'], ['pc', 'Your PC'], ['login', 'Login'], ['video', 'Video stream'], ['udp', 'Direct (UDP) path']];
@@ -1466,7 +1466,8 @@
     const yn = (v) => (v ? 'on' : 'off');
     lastPcReport = [
       `PC "${h.name || '?'}" · RemoteLink ${h.version || '?'} (Electron ${h.electron || '?'}) · running ${h.uptimeMin != null ? h.uptimeMin + ' min' : '?'}`,
-      `Always active: ${yn(h.alwaysActive)} · paused: ${h.paused ? 'YES' : 'no'} · keep awake: ${yn(h.keepAwake)} · start with Windows: ${yn(h.startWithWindows)}`,
+      ...(h.os ? [`System: ${h.os} · mouse/keyboard control: ${h.input || '?'}`] : []),
+      `Always active: ${yn(h.alwaysActive)} · paused: ${h.paused ? 'YES' : 'no'} · keep awake: ${yn(h.keepAwake)} · start at login: ${yn(h.startWithWindows)}`,
       `Cloudflare TURN relay: ${h.turn ? 'set up' : 'not set up'}${h.turnServers != null ? ` (${h.turnServers} relay server entries now)` : ''} · trusted Chromebooks: ${h.trusted != null ? h.trusted : '?'}`,
       `Monitors switched on: ${h.monitors == null ? '?' : h.monitors === 0 ? '0 ⚠ (OpenGL games like Minecraft will show a white window — turn the monitor on or use an HDMI dummy plug)' : h.monitors}`,
       `Screens: ${h.displays != null ? h.displays : '?'} · signaling: ${h.signal || '?'} · allow control: ${yn(h.allowControl)} · this session: ${h.session || '-'}`,
